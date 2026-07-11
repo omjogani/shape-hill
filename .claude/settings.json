@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(migrations/*.sql)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "atlas migrate hash --env local 2>/dev/null; atlas migrate lint --env local --latest 1 2>&1 | head -20"
+          }
+        ]
+      }
+    ]
+  }
+}
