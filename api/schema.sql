@@ -1,0 +1,5 @@
+-- Source of truth for the `public` schema. Edit here, then:
+--   atlas migrate diff --env local "<name>"
+--
+-- Supabase manages auth/storage/extensions itself; keep everything in `public`
+-- and Atlas will leave those alone.
