@@ -38,14 +38,14 @@ func Load(dir string) (*Config, error) {
 		return nil, err
 	}
 
-	var cfg Config
-	if err := settings.Unmarshal(&cfg); err != nil {
+	var config Config
+	if err := settings.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
-	if err := cfg.validate(); err != nil {
+	if err := config.validate(); err != nil {
 		return nil, err
 	}
-	return &cfg, nil
+	return &config, nil
 }
 
 func readOptionalYAML(settings *viper.Viper, dir string) error {
