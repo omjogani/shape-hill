@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io/fs"
 
 	"github.com/spf13/viper"
 )
@@ -28,6 +29,16 @@ func Load() (*Config, error) {
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
+	}
+
+	// Layer .env on top for local dev. Absent in deployed environments, where the
+	// real environment supplies the secrets — so a missing file is not an error.
+	viper.SetConfigFile(".env")
+	viper.SetConfigType("dotenv")
+	if err := viper.MergeInConfig(); err != nil {
+		if _, ok := err.(*fs.PathError); !ok {
+			return nil, fmt.Errorf("read .env: %w", err)
+		}
 	}
 
 	var c Config
