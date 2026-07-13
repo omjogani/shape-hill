@@ -128,8 +128,15 @@ atlas migrate apply --env supabase --baseline 20260101000000
 ```bash
 go run .
 go build ./...
-go test ./...
 ```
 
-Config loads `config.yaml` first, then overrides from the environment
-(`PORT`, `LOG_LEVEL`, `DATABASE_URL`). Startup fails if `DATABASE_URL` is unset.
+### Tests
+
+```bash
+go test ./...                 # all tests
+go test ./... -v              # with each test name
+go test ./internal/config/    # one package
+go test ./... -run TestName   # one test, by name
+go test ./... -race           # race detector
+go test ./... -cover          # coverage summary
+```

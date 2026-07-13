@@ -1,8 +1,12 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
+	"path/filepath"
+	"slices"
 
 	"github.com/spf13/viper"
 )
@@ -13,40 +17,76 @@ type Config struct {
 	DatabaseURL string `mapstructure:"database_url"`
 }
 
-// Load reads config.yaml, then overrides from the environment (PORT, LOG_LEVEL,
-// DATABASE_URL). Secrets live only in env — never in config.yaml.
-func Load() (*Config, error) {
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-	viper.AutomaticEnv()
+var validLogLevels = []string{"debug", "info", "warn", "error"}
 
-	// AutomaticEnv only sees keys viper already knows about, so declare the
-	// env-only ones by binding them explicitly.
-	if err := viper.BindEnv("database_url"); err != nil {
+// Load resolves config from, in increasing order of precedence: defaults,
+// config.yaml, .env, then the process environment. Both files are optional.
+func Load(dir string) (*Config, error) {
+	settings := viper.New()
+	settings.SetDefault("port", 8080)
+	settings.SetDefault("log_level", "info")
+	settings.AutomaticEnv()
+
+	// AutomaticEnv only resolves keys viper already knows, and this one has no default.
+	if err := settings.BindEnv("database_url"); err != nil {
+		return nil, fmt.Errorf("bind DATABASE_URL: %w", err)
+	}
+	if err := readOptionalYAML(settings, dir); err != nil {
+		return nil, err
+	}
+	if err := mergeOptionalDotenv(settings, dir); err != nil {
 		return nil, err
 	}
 
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("read config: %w", err)
-	}
-
-	// Layer .env on top for local dev. Absent in deployed environments, where the
-	// real environment supplies the secrets — so a missing file is not an error.
-	viper.SetConfigFile(".env")
-	viper.SetConfigType("dotenv")
-	if err := viper.MergeInConfig(); err != nil {
-		if _, ok := err.(*fs.PathError); !ok {
-			return nil, fmt.Errorf("read .env: %w", err)
-		}
-	}
-
-	var c Config
-	if err := viper.Unmarshal(&c); err != nil {
+	var cfg Config
+	if err := settings.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
-	if c.DatabaseURL == "" {
-		return nil, fmt.Errorf("DATABASE_URL is not set")
+	if err := cfg.validate(); err != nil {
+		return nil, err
 	}
-	return &c, nil
+	return &cfg, nil
+}
+
+func readOptionalYAML(settings *viper.Viper, dir string) error {
+	settings.SetConfigName("config")
+	settings.SetConfigType("yaml")
+	settings.AddConfigPath(dir)
+
+	var missing viper.ConfigFileNotFoundError
+	if err := settings.ReadInConfig(); err != nil && !errors.As(err, &missing) {
+		return fmt.Errorf("read config.yaml: %w", err)
+	}
+	return nil
+}
+
+func mergeOptionalDotenv(settings *viper.Viper, dir string) error {
+	settings.SetConfigFile(filepath.Join(dir, ".env"))
+	settings.SetConfigType("dotenv")
+
+	var missing *fs.PathError
+	if err := settings.MergeInConfig(); err != nil && !errors.As(err, &missing) {
+		return fmt.Errorf("read .env: %w", err)
+	}
+	return nil
+}
+
+func (c *Config) validate() error {
+	if c.DatabaseURL == "" {
+		return errors.New("DATABASE_URL is required")
+	}
+	parsed, err := url.Parse(c.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("DATABASE_URL is not a valid URL: %w", err)
+	}
+	if parsed.Scheme != "postgres" && parsed.Scheme != "postgresql" {
+		return fmt.Errorf("DATABASE_URL must be a postgres:// URL, got scheme %q", parsed.Scheme)
+	}
+	if c.Port < 1 || c.Port > 65535 {
+		return fmt.Errorf("port must be between 1 and 65535, got %d", c.Port)
+	}
+	if !slices.Contains(validLogLevels, c.LogLevel) {
+		return fmt.Errorf("log_level must be one of %v, got %q", validLogLevels, c.LogLevel)
+	}
+	return nil
 }
