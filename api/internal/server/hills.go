@@ -1,0 +1,155 @@
+package server
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/omjogani/shape-hill/internal/store"
+)
+
+func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email    string `json:"email"`
+		Username string `json:"username"`
+		Name     string `json:"name"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if body.Email == "" || body.Username == "" {
+		writeError(w, http.StatusBadRequest, "email and username are required")
+		return
+	}
+
+	user, err := s.store.CreateUser(r.Context(), body.Email, body.Username, body.Name)
+	if err != nil {
+		s.log.Error("create user", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not create user")
+		return
+	}
+	writeJSON(w, http.StatusCreated, user)
+}
+
+func (s *Server) createHill(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		OwnerID     string `json:"owner_id"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		IsPublic    bool   `json:"is_public"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if body.OwnerID == "" || body.Title == "" {
+		writeError(w, http.StatusBadRequest, "owner_id and title are required")
+		return
+	}
+
+	hill, err := s.store.CreateHill(r.Context(), body.OwnerID, body.Title, body.Description, body.IsPublic)
+	if err != nil {
+		s.log.Error("create hill", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not create hill")
+		return
+	}
+	writeJSON(w, http.StatusCreated, hill)
+}
+
+func (s *Server) getHill(w http.ResponseWriter, r *http.Request) {
+	hill, err := s.store.HillBySlug(r.Context(), r.PathValue("slug"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "hill not found")
+		return
+	}
+	if err != nil {
+		s.log.Error("get hill", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not load hill")
+		return
+	}
+
+	scopes, err := s.store.ScopesForHill(r.Context(), hill.ID)
+	if err != nil {
+		s.log.Error("list scopes", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not load scopes")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"hill": hill, "scopes": scopes})
+}
+
+func (s *Server) createScope(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Color       string `json:"color"`
+		SortOrder   int16  `json:"sort_order"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if body.Title == "" {
+		writeError(w, http.StatusBadRequest, "title is required")
+		return
+	}
+	if body.Color == "" {
+		body.Color = "#2F4C64"
+	}
+
+	hill, err := s.store.HillBySlug(r.Context(), r.PathValue("slug"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "hill not found")
+		return
+	}
+	if err != nil {
+		s.log.Error("get hill", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not load hill")
+		return
+	}
+
+	scope, err := s.store.CreateScope(r.Context(), hill.ID, body.Title, body.Description, body.Color, body.SortOrder)
+	if err != nil {
+		s.log.Error("create scope", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not create scope")
+		return
+	}
+	writeJSON(w, http.StatusCreated, scope)
+}
+
+func (s *Server) moveScope(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Position *int16 `json:"position"`
+		Note     string `json:"note"`
+		MovedBy  string `json:"moved_by"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if body.Position == nil {
+		writeError(w, http.StatusBadRequest, "position is required")
+		return
+	}
+	if *body.Position < 0 || *body.Position > 100 {
+		writeError(w, http.StatusBadRequest, "position must be between 0 and 100")
+		return
+	}
+
+	err := s.store.MoveScope(r.Context(), r.PathValue("id"), *body.Position, body.Note, body.MovedBy)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "scope not found")
+		return
+	}
+	if err != nil {
+		s.log.Error("move scope", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not move scope")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func decode(w http.ResponseWriter, r *http.Request, into any) bool {
+	if err := json.NewDecoder(r.Body).Decode(into); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return false
+	}
+	return true
+}
