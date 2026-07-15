@@ -18,6 +18,7 @@ type Dot struct {
 type Chart struct {
 	Title string
 	Dots  []Dot
+	Style Style
 }
 
 type canvas struct {
@@ -31,7 +32,7 @@ func Render(chart Chart) []byte {
 	fmt.Fprintf(c, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %.0f %.0f" width="%.0f" height="%.0f" role="img" aria-label="%s">`,
 		width, height, width, height, escape(chart.Title+" — hill chart"))
 
-	c.WriteString(style)
+	c.WriteString(styleFor(chart.Style))
 	c.drawBackground(height)
 	c.drawSummit()
 	c.drawTitle(chart.Title)

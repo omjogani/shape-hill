@@ -131,6 +131,26 @@ func TestCanvasGrowsToFitEveryLegendRow(t *testing.T) {
 	}
 }
 
+func TestStyleSelectsThePalette(t *testing.T) {
+	def := string(Render(Chart{Title: "Billing"}))
+	if !strings.Contains(def, "#E9E7DE") {
+		t.Error("the zero-value style should render the default paper palette")
+	}
+
+	gh := string(Render(Chart{Title: "Billing", Style: StyleGitHub}))
+	if !strings.Contains(gh, "#d0d7de") {
+		t.Error("StyleGitHub should render GitHub's border colour")
+	}
+	if strings.Contains(gh, "#E9E7DE") {
+		t.Error("StyleGitHub should not leak the default paper palette")
+	}
+
+	unknown := string(Render(Chart{Title: "Billing", Style: "nope"}))
+	if !strings.Contains(unknown, "#E9E7DE") {
+		t.Error("an unknown style should fall back to the default palette")
+	}
+}
+
 func TestEmptyChartStillRenders(t *testing.T) {
 	svg := string(Render(Chart{Title: "Nothing bet yet"}))
 	if !strings.Contains(svg, "</svg>") {
