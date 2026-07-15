@@ -20,27 +20,31 @@ type Chart struct {
 	Dots  []Dot
 }
 
+type canvas struct {
+	strings.Builder
+}
+
 func Render(chart Chart) []byte {
 	height := baseline + 60 + rowStep*float64(len(chart.Dots))
 
-	var svg strings.Builder
-	fmt.Fprintf(&svg, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %.0f %.0f" width="%.0f" height="%.0f" role="img" aria-label="%s">`,
+	c := &canvas{}
+	fmt.Fprintf(c, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %.0f %.0f" width="%.0f" height="%.0f" role="img" aria-label="%s">`,
 		width, height, width, height, escape(chart.Title+" — hill chart"))
 
-	svg.WriteString(style)
-	drawBackground(&svg, height)
-	drawSummit(&svg)
-	drawTitle(&svg, chart.Title)
+	c.WriteString(style)
+	c.drawBackground(height)
+	c.drawSummit()
+	c.drawTitle(chart.Title)
 
 	for i, dot := range chart.Dots {
-		drawScope(&svg, i, dot)
+		c.drawScope(i, dot)
 	}
 	for i, dot := range chart.Dots {
-		drawLegendEntry(&svg, i, dot)
+		c.drawLegendEntry(i, dot)
 	}
 
-	svg.WriteString(`</svg>`)
-	return []byte(svg.String())
+	c.WriteString(`</svg>`)
+	return []byte(c.String())
 }
 
 var escaper = strings.NewReplacer(
