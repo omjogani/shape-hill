@@ -118,7 +118,7 @@ func TestCanvasGrowsToFitEveryLegendRow(t *testing.T) {
 		svg := string(Render(Chart{Title: "Billing v2", Dots: dots}))
 
 		height := baseline + 60 + rowStep*float64(count)
-		background := fmt.Sprintf(`<rect class="paper" x="0" y="0" width="%.0f" height="%.0f"/>`, width, height)
+		background := fmt.Sprintf(`<rect class="paper" x="1" y="1" width="%.0f" height="%.0f" rx="10"/>`, width-2, height-2)
 		if !strings.Contains(svg, background) {
 			t.Errorf("%d dots: background should span the full canvas, want %s", count, background)
 		}

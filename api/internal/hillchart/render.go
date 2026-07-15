@@ -80,7 +80,7 @@ func Render(chart Chart) []byte {
 // The stylesheet travels inside the SVG, so the image follows the reader's theme
 // even when it is embedded as a plain <img> in someone else's page.
 const style = `<style>
-  .paper { fill: #E9E7DE; }
+  .paper { fill: #E9E7DE; stroke: #DEDBCB; stroke-width: 2; }
   .hill  { fill: #DEDBCB; }
   .edge  { fill: none; stroke: #1B211D; stroke-width: 2; }
   .axis  { stroke: #1B211D; stroke-width: 1.5; }
@@ -95,6 +95,7 @@ const style = `<style>
   @media (prefers-color-scheme: dark) {
     .paper { fill: #121614; }
     .hill  { fill: #1D2320; }
+    .paper { fill: #121614; stroke: #1D2320; }
     .edge, .axis { stroke: #DCDDD3; }
     .summit { stroke: #8B948C; }
     .title, .name { fill: #DCDDD3; }
@@ -106,7 +107,8 @@ const style = `<style>
 </style>`
 
 func writeTerrain(svg *strings.Builder, height float64) {
-	fmt.Fprintf(svg, `<rect class="paper" x="0" y="0" width="%.0f" height="%.0f"/>`, width, height)
+	// Inset by 1 so the 2px border isn't clipped in half by the canvas edge.
+	fmt.Fprintf(svg, `<rect class="paper" x="1" y="1" width="%.0f" height="%.0f" rx="10"/>`, width-2, height-2)
 
 	var curve strings.Builder
 	for step := 0; step <= 240; step++ {
