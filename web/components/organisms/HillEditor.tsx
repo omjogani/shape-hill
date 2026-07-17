@@ -6,6 +6,7 @@ import { HillChart, type ChartDot } from "./HillChart";
 import { TitleForm } from "../molecules/TitleForm";
 import { AddScopeForm } from "../molecules/AddScopeForm";
 import { ScopeRow } from "../molecules/ScopeRow";
+import { CopyEmbed } from "../molecules/CopyEmbed";
 
 // Mirrors the server's stalledAfter: a scope untouched for a week (and not done).
 const STALLED_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
@@ -67,8 +68,9 @@ export function HillEditor({ slug }: { slug: string }) {
         <AddScopeForm slug={slug} nextSortOrder={nextSortOrder} />
       </section>
 
-      <footer className="border-t border-hill/60 pt-4 font-mono text-xs text-sage">
-        Embed anywhere: <code className="text-ink">/hill/{slug}.svg</code>
+      <footer className="flex flex-col gap-2 border-t border-hill/60 pt-4">
+        <p className="font-mono text-xs uppercase tracking-widest text-sage">Embed anywhere</p>
+        <CopyEmbed slug={slug} title={hill.Title} />
       </footer>
     </main>
   );
