@@ -9,7 +9,7 @@ VALUES ('a0000000-0000-4000-8000-000000000001', 'om@shapehill.dev', 'omj', 'Om')
 INSERT INTO hills (id, owner_id, slug, title, description, is_public, starts_on, ends_on)
 VALUES ('b0000000-0000-4000-8000-000000000001',
         'a0000000-0000-4000-8000-000000000001',
-        'demo-billing',
+        'shape-hill-demo',
         'Billing v2',
         'Six week cycle, four scopes.',
         true,
