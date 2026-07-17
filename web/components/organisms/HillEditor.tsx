@@ -48,7 +48,10 @@ export function HillEditor({ slug }: { slug: string }) {
         <TitleForm slug={slug} title={hill.Title} />
       </header>
 
-      <HillChart dots={dots} onMove={(id, position) => move.mutate({ scopeId: id, position, note: "" })} />
+      <HillChart
+        dots={dots}
+        onMove={(id, position) => move.mutate({ scopeId: id, position, note: "" })}
+      />
 
       <section className="flex flex-col gap-3">
         <h2 className="font-mono text-xs uppercase tracking-widest text-sage">Scopes</h2>

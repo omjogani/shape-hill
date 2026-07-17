@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type Hill, type HillResponse } from "./api";
 
 const key = (slug: string) => ["hill", slug] as const;
@@ -18,9 +14,7 @@ export function useUpdateTitle(slug: string) {
   return useMutation({
     mutationFn: (title: string) => api.updateTitle(slug, title),
     onSuccess: (hill: Hill) =>
-      qc.setQueryData<HillResponse>(key(slug), (prev) =>
-        prev ? { ...prev, hill } : prev,
-      ),
+      qc.setQueryData<HillResponse>(key(slug), (prev) => (prev ? { ...prev, hill } : prev)),
   });
 }
 

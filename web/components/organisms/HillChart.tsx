@@ -97,9 +97,19 @@ export function HillChart({
         className="fill-paper stroke-hill"
         strokeWidth="2"
       />
-      <path d={`${curvePath} L ${RIGHT} ${BASELINE} L ${LEFT} ${BASELINE} Z`} className="fill-hill" />
+      <path
+        d={`${curvePath} L ${RIGHT} ${BASELINE} L ${LEFT} ${BASELINE} Z`}
+        className="fill-hill"
+      />
       <path d={curvePath} className="fill-none stroke-ink" strokeWidth="2" />
-      <line x1={LEFT} y1={BASELINE} x2={RIGHT} y2={BASELINE} className="stroke-ink" strokeWidth="1.5" />
+      <line
+        x1={LEFT}
+        y1={BASELINE}
+        x2={RIGHT}
+        y2={BASELINE}
+        className="stroke-ink"
+        strokeWidth="1.5"
+      />
 
       <line
         x1={mid}
@@ -110,10 +120,23 @@ export function HillChart({
         strokeWidth="1"
         strokeDasharray="3 4"
       />
-      <text x={mid} y={PEAK - 16} textAnchor="middle" className="fill-sage font-mono" fontSize="11" letterSpacing="1.2">
+      <text
+        x={mid}
+        y={PEAK - 16}
+        textAnchor="middle"
+        className="fill-sage font-mono"
+        fontSize="11"
+        letterSpacing="1.2"
+      >
         SUMMIT
       </text>
-      <text x={LEFT} y={BASELINE + 22} className="fill-sage font-mono" fontSize="11" letterSpacing="1.2">
+      <text
+        x={LEFT}
+        y={BASELINE + 22}
+        className="fill-sage font-mono"
+        fontSize="11"
+        letterSpacing="1.2"
+      >
         FIGURING IT OUT
       </text>
       <text

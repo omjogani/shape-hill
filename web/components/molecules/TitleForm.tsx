@@ -45,7 +45,13 @@ export function TitleForm({ slug, title }: { slug: string; title: string }) {
         )}
       </form.Field>
       <p className="mt-1 h-4 font-mono text-xs text-sage">
-        {update.isPending ? "Saving…" : update.isError ? "Couldn't save title" : update.isSuccess ? "Saved" : ""}
+        {update.isPending
+          ? "Saving…"
+          : update.isError
+            ? "Couldn't save title"
+            : update.isSuccess
+              ? "Saved"
+              : ""}
       </p>
     </form>
   );

@@ -10,11 +10,9 @@ export const PEAK = 60;
 // labels); the scope legend lives in HTML below it.
 export const CHART_HEIGHT = 340;
 
-export const clamp = (position: number) =>
-  position < 0 ? 0 : position > 100 ? 100 : position;
+export const clamp = (position: number) => (position < 0 ? 0 : position > 100 ? 100 : position);
 
-export const x = (position: number) =>
-  LEFT + (clamp(position) / 100) * (RIGHT - LEFT);
+export const x = (position: number) => LEFT + (clamp(position) / 100) * (RIGHT - LEFT);
 
 // Raised cosine: flat at both feet, flat over the summit.
 export const y = (position: number) => {
