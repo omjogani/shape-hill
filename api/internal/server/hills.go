@@ -77,6 +77,31 @@ func (s *Server) getHill(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"hill": hill, "scopes": scopes})
 }
 
+func (s *Server) updateHill(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Title string `json:"title"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if body.Title == "" {
+		writeError(w, http.StatusBadRequest, "title is required")
+		return
+	}
+
+	hill, err := s.store.UpdateHillTitle(r.Context(), r.PathValue("slug"), body.Title)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "hill not found")
+		return
+	}
+	if err != nil {
+		s.log.Error("update hill", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not update hill")
+		return
+	}
+	writeJSON(w, http.StatusOK, hill)
+}
+
 func (s *Server) createScope(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Title       string `json:"title"`
