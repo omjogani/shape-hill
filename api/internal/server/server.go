@@ -9,7 +9,7 @@ import (
 	"github.com/omjogani/shape-hill/internal/store"
 )
 
-// A scope that hasn't moved in this long is stalled — the signal the chart exists to show.
+// A scope that hasn't moved in this long is stalled, the signal the chart exists to show.
 const stalledAfter = 7 * 24 * time.Hour
 
 type Server struct {
@@ -19,17 +19,17 @@ type Server struct {
 }
 
 func New(st *store.Store, log *slog.Logger) *Server {
-	s := &Server{store: st, log: log, mux: http.NewServeMux()}
+	server := &Server{store: st, log: log, mux: http.NewServeMux()}
 
-	s.mux.HandleFunc("GET /healthz", s.health)
-	s.mux.HandleFunc("GET /h/{file}", s.embed)
-	s.mux.HandleFunc("POST /api/users", s.createUser)
-	s.mux.HandleFunc("POST /api/hills", s.createHill)
-	s.mux.HandleFunc("GET /api/hills/{slug}", s.getHill)
-	s.mux.HandleFunc("POST /api/hills/{slug}/scopes", s.createScope)
-	s.mux.HandleFunc("POST /api/scopes/{id}/positions", s.moveScope)
+	server.mux.HandleFunc("GET /healthz", server.health)
+	server.mux.HandleFunc("GET /hill/{file}", server.embed)
+	server.mux.HandleFunc("POST /api/users", server.createUser)
+	server.mux.HandleFunc("POST /api/hills", server.createHill)
+	server.mux.HandleFunc("GET /api/hills/{slug}", server.getHill)
+	server.mux.HandleFunc("POST /api/hills/{slug}/scopes", server.createScope)
+	server.mux.HandleFunc("POST /api/scopes/{id}/positions", server.moveScope)
 
-	return s
+	return server
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

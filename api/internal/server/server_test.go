@@ -88,7 +88,7 @@ func TestEmbedServesSVGAndHonoursETag(t *testing.T) {
 	})
 	scopeID := scope["ID"].(string)
 
-	resp, err := http.Get(srv.URL + "/h/" + slug + ".svg")
+	resp, err := http.Get(srv.URL + "/hill/" + slug + ".svg")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestEmbedServesSVGAndHonoursETag(t *testing.T) {
 	}
 
 	// An unchanged hill must answer 304, or every proxy refetch redraws it.
-	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/h/"+slug+".svg", nil)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/hill/"+slug+".svg", nil)
 	req.Header.Set("If-None-Match", etag)
 	cached, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -131,7 +131,7 @@ func TestEmbedServesSVGAndHonoursETag(t *testing.T) {
 		t.Fatalf("move scope = %d, want 204", moved.StatusCode)
 	}
 
-	after, err := http.Get(srv.URL + "/h/" + slug + ".svg")
+	after, err := http.Get(srv.URL + "/hill/" + slug + ".svg")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestEmbedHidesPrivateHills(t *testing.T) {
 	})
 	slug := hill["Slug"].(string)
 
-	resp, err := http.Get(srv.URL + "/h/" + slug + ".svg")
+	resp, err := http.Get(srv.URL + "/hill/" + slug + ".svg")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestEmbedHidesPrivateHills(t *testing.T) {
 func TestEmbedUnknownSlug(t *testing.T) {
 	srv, _, _ := testServer(t)
 
-	resp, err := http.Get(srv.URL + "/h/nosuchhill.svg")
+	resp, err := http.Get(srv.URL + "/hill/nosuchhill.svg")
 	if err != nil {
 		t.Fatal(err)
 	}
