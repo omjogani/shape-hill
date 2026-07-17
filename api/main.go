@@ -24,33 +24,56 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load(".")
+	cfg, err := loadConfig()
 	if err != nil {
 		return err
 	}
 
-	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel(cfg.LogLevel)}))
+	log := setupLogger(cfg.LogLevel)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	db, err := store.New(ctx, cfg.DatabaseURL)
+	db, err := openStore(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	srv := &http.Server{
+	return serve(ctx, newServer(cfg, db, log), log)
+}
+
+func loadConfig() (*config.Config, error) {
+	return config.Load(".")
+}
+
+func setupLogger(level string) *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel(level)}))
+}
+
+func openStore(ctx context.Context, databaseURL string) (*store.Store, error) {
+	return store.New(ctx, databaseURL)
+}
+
+func newServer(cfg *config.Config, db *store.Store, log *slog.Logger) *http.Server {
+	return &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
 		Handler:           server.New(db, log),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+}
+
+func serve(ctx context.Context, srv *http.Server, log *slog.Logger) error {
+	// A failed ListenAndServe cancels this context too, so a startup error (e.g.
+	// port in use) unblocks the wait below instead of hanging forever.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	go func() {
-		log.Info("listening", "port", cfg.Port)
+		log.Info("listening", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("server failed", "err", err)
-			stop()
+			cancel()
 		}
 	}()
 
