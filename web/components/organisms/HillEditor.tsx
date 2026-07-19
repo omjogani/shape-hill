@@ -61,7 +61,7 @@ export function HillEditor({ slug }: { slug: string }) {
         ) : (
           <ul className="divide-y divide-hill/60">
             {scopes.map((s, i) => (
-              <ScopeRow key={s.ID} index={i} scope={s} stalled={isStalled(s)} />
+              <ScopeRow key={s.ID} slug={slug} index={i} scope={s} stalled={isStalled(s)} />
             ))}
           </ul>
         )}

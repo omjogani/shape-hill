@@ -69,6 +69,14 @@ export const api = {
       body: JSON.stringify(input),
     }),
 
+  updateScope: (scopeId: string, input: { title: string; color: string }) =>
+    request<void>(`/api/scopes/${scopeId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+
+  deleteScope: (scopeId: string) => request<void>(`/api/scopes/${scopeId}`, { method: "DELETE" }),
+
   moveScope: (scopeId: string, position: number, note: string) =>
     request<void>(`/api/scopes/${scopeId}/positions`, {
       method: "POST",

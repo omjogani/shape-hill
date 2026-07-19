@@ -2,8 +2,8 @@
 
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
-import { useAddScope } from "@/lib/hooks";
-import { SCOPE_COLORS } from "@/lib/colors";
+import { useUpdateScope } from "@/lib/hooks";
+import type { Scope } from "@/lib/api";
 import { Button } from "../atoms/Button";
 import { TextInput } from "../atoms/TextInput";
 import { FieldError } from "../atoms/FieldError";
@@ -14,15 +14,23 @@ const schema = z.object({
   color: z.string(),
 });
 
-export function AddScopeForm({ slug, nextSortOrder }: { slug: string; nextSortOrder: number }) {
-  const add = useAddScope(slug);
+export function EditScopeForm({
+  slug,
+  scope,
+  onDone,
+}: {
+  slug: string;
+  scope: Scope;
+  onDone: () => void;
+}) {
+  const update = useUpdateScope(slug);
 
   const form = useForm({
-    defaultValues: { title: "", color: SCOPE_COLORS[0] },
+    defaultValues: { title: scope.Title, color: scope.Color },
     validators: { onChange: schema },
-    onSubmit: async ({ value, formApi }) => {
-      await add.mutateAsync({ title: value.title, color: value.color, sort_order: nextSortOrder });
-      formApi.reset();
+    onSubmit: async ({ value }) => {
+      await update.mutateAsync({ scopeId: scope.ID, title: value.title, color: value.color });
+      onDone();
     },
   });
 
@@ -39,7 +47,8 @@ export function AddScopeForm({ slug, nextSortOrder }: { slug: string; nextSortOr
           {(field) => (
             <div className="flex-1">
               <TextInput
-                placeholder="Add a scope…"
+                autoFocus
+                aria-label="Scope title"
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
@@ -52,17 +61,18 @@ export function AddScopeForm({ slug, nextSortOrder }: { slug: string; nextSortOr
         <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
           {([canSubmit, isSubmitting]) => (
             <Button type="submit" disabled={!canSubmit || isSubmitting}>
-              {isSubmitting ? "Adding…" : "Add"}
+              {isSubmitting ? "Saving…" : "Save"}
             </Button>
           )}
         </form.Subscribe>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
       </div>
 
       <form.Field name="color">
         {(field) => <ColorPicker value={field.state.value} onChange={field.handleChange} />}
       </form.Field>
-
-      {add.isError && <p className="text-xs text-alarm">Couldn&apos;t add scope. Try again.</p>}
     </form>
   );
 }
