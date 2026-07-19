@@ -140,6 +140,49 @@ func (s *Server) createScope(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, scope)
 }
 
+func (s *Server) updateScope(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Title string `json:"title"`
+		Color string `json:"color"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if body.Title == "" {
+		writeError(w, http.StatusBadRequest, "title is required")
+		return
+	}
+	if body.Color == "" {
+		body.Color = "#2F4C64"
+	}
+
+	err := s.store.UpdateScope(r.Context(), r.PathValue("id"), body.Title, body.Color)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "scope not found")
+		return
+	}
+	if err != nil {
+		s.log.Error("update scope", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not update scope")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) deleteScope(w http.ResponseWriter, r *http.Request) {
+	err := s.store.ArchiveScope(r.Context(), r.PathValue("id"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "scope not found")
+		return
+	}
+	if err != nil {
+		s.log.Error("delete scope", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not delete scope")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) moveScope(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Position *int16 `json:"position"`

@@ -95,6 +95,34 @@ func (s *Store) CreateScope(ctx context.Context, hillID, title, description, col
 	return scope, nil
 }
 
+func (s *Store) UpdateScope(ctx context.Context, scopeID, title, color string) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE scopes SET title = $2, color = $3
+		WHERE id = $1::uuid AND archived_at IS NULL
+	`, scopeID, title, color)
+	if err != nil {
+		return fmt.Errorf("update scope: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) ArchiveScope(ctx context.Context, scopeID string) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE scopes SET archived_at = now()
+		WHERE id = $1::uuid AND archived_at IS NULL
+	`, scopeID)
+	if err != nil {
+		return fmt.Errorf("archive scope: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // ScopesForHill returns each live scope with its most recent position. A scope
 // that has never been moved sits at 0.
 func (s *Store) ScopesForHill(ctx context.Context, hillID string) ([]Scope, error) {
