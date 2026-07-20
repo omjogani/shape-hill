@@ -27,6 +27,52 @@ export function useAddScope(slug: string) {
   });
 }
 
+export function useUpdateScope(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { scopeId: string; title: string; color: string }) =>
+      api.updateScope(v.scopeId, { title: v.title, color: v.color }),
+    onMutate: async (v) => {
+      await qc.cancelQueries({ queryKey: key(slug) });
+      const prev = qc.getQueryData<HillResponse>(key(slug));
+      qc.setQueryData<HillResponse>(key(slug), (old) =>
+        old
+          ? {
+              ...old,
+              scopes: old.scopes.map((s) =>
+                s.ID === v.scopeId ? { ...s, Title: v.title, Color: v.color } : s,
+              ),
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key(slug), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key(slug) }),
+  });
+}
+
+export function useDeleteScope(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (scopeId: string) => api.deleteScope(scopeId),
+    onMutate: async (scopeId) => {
+      await qc.cancelQueries({ queryKey: key(slug) });
+      const prev = qc.getQueryData<HillResponse>(key(slug));
+      qc.setQueryData<HillResponse>(key(slug), (old) =>
+        old ? { ...old, scopes: old.scopes.filter((s) => s.ID !== scopeId) } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key(slug), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key(slug) }),
+  });
+}
+
 export function useMoveScope(slug: string) {
   const qc = useQueryClient();
   return useMutation({
