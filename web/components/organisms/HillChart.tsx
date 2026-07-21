@@ -19,6 +19,8 @@ export type ChartDot = {
   color: string;
   position: number;
   stalled: boolean;
+  /** Moved but not yet saved — drawn with a dashed halo. */
+  pending?: boolean;
 };
 
 // The hill outline, sampled once at module load (it never changes).
@@ -33,10 +35,11 @@ const curvePath = (() => {
 
 export function HillChart({
   dots,
-  onMove,
+  onStage,
 }: {
   dots: ChartDot[];
-  onMove: (id: string, position: number) => void;
+  /** Records a move locally; nothing is persisted until the user saves. */
+  onStage: (id: string, position: number) => void;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<{ id: string; position: number } | null>(null);
@@ -61,7 +64,7 @@ export function HillChart({
     if (!drag) return;
     svgRef.current?.releasePointerCapture(e.pointerId);
     const original = dots.find((d) => d.id === drag.id);
-    if (original && original.position !== drag.position) onMove(drag.id, drag.position);
+    if (original && original.position !== drag.position) onStage(drag.id, drag.position);
     setDrag(null);
   };
 
@@ -71,7 +74,7 @@ export function HillChart({
     if (!step) return;
     e.preventDefault();
     const next = Math.max(0, Math.min(100, dot.position + step));
-    if (next !== dot.position) onMove(dot.id, next);
+    if (next !== dot.position) onStage(dot.id, next);
   };
 
   const posOf = (dot: ChartDot) => (drag?.id === dot.id ? drag.position : dot.position);
@@ -167,6 +170,14 @@ export function HillChart({
             onPointerDown={(e) => start(e, dot)}
             onKeyDown={(e) => nudge(e, dot)}
           >
+            {dot.pending && (
+              <circle
+                r="16"
+                className="fill-none stroke-sage"
+                strokeWidth="1.5"
+                strokeDasharray="3 3"
+              />
+            )}
             <circle
               r="11"
               strokeWidth="2.5"

@@ -73,31 +73,15 @@ export function useDeleteScope(slug: string) {
   });
 }
 
-export function useMoveScope(slug: string) {
+export type StagedMove = { scopeId: string; position: number; note: string };
+
+// Commits staged dot moves. Each one appends a scope_positions row — the note is
+// the snapshot of why it moved — so they're written together on Save.
+export function useSaveMoves(slug: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { scopeId: string; position: number; note: string }) =>
-      api.moveScope(v.scopeId, v.position, v.note),
-    // Optimistic: the dot should stay where it was dropped, not snap back while
-    // the request is in flight.
-    onMutate: async (v) => {
-      await qc.cancelQueries({ queryKey: key(slug) });
-      const prev = qc.getQueryData<HillResponse>(key(slug));
-      qc.setQueryData<HillResponse>(key(slug), (old) =>
-        old
-          ? {
-              ...old,
-              scopes: old.scopes.map((s) =>
-                s.ID === v.scopeId ? { ...s, Position: v.position, Note: v.note } : s,
-              ),
-            }
-          : old,
-      );
-      return { prev };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(key(slug), ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: key(slug) }),
+    mutationFn: (moves: StagedMove[]) =>
+      Promise.all(moves.map((m) => api.moveScope(m.scopeId, m.position, m.note))),
+    onSuccess: () => qc.invalidateQueries({ queryKey: key(slug) }),
   });
 }

@@ -1,12 +1,14 @@
 "use client";
 
-import { useHill, useMoveScope } from "@/lib/hooks";
+import { useState } from "react";
+import { useHill, useSaveMoves } from "@/lib/hooks";
 import type { Scope } from "@/lib/api";
 import { HillChart, type ChartDot } from "./HillChart";
 import { TitleForm } from "../molecules/TitleForm";
 import { AddScopeForm } from "../molecules/AddScopeForm";
 import { ScopeRow } from "../molecules/ScopeRow";
 import { CopyEmbed } from "../molecules/CopyEmbed";
+import { PendingChanges, type Staged } from "../molecules/PendingChanges";
 
 // Mirrors the server's stalledAfter: a scope untouched for a week (and not done).
 const STALLED_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
@@ -15,7 +17,27 @@ const isStalled = (s: Scope) =>
 
 export function HillEditor({ slug }: { slug: string }) {
   const { data, isLoading, isError, error } = useHill(slug);
-  const move = useMoveScope(slug);
+  const save = useSaveMoves(slug);
+  // Dot moves live here until the user saves them, so nothing is written to the
+  // database without a note the user had a chance to write.
+  const [pending, setPending] = useState<Record<string, Staged>>({});
+
+  const stage = (scopeId: string, position: number) =>
+    setPending((p) => ({ ...p, [scopeId]: { position, note: p[scopeId]?.note ?? "" } }));
+
+  const setNote = (scopeId: string, note: string) =>
+    setPending((p) => (p[scopeId] ? { ...p, [scopeId]: { ...p[scopeId], note } } : p));
+
+  const saveMoves = async () => {
+    const moves = Object.entries(pending).map(([scopeId, staged]) => ({
+      scopeId,
+      position: staged.position,
+      note: staged.note,
+    }));
+    if (moves.length === 0) return;
+    await save.mutateAsync(moves);
+    setPending({});
+  };
 
   if (isLoading) return <Centered>Loading hill…</Centered>;
 
@@ -37,8 +59,9 @@ export function HillEditor({ slug }: { slug: string }) {
     id: s.ID,
     label: s.Title,
     color: s.Color,
-    position: s.Position,
-    stalled: isStalled(s),
+    position: pending[s.ID]?.position ?? s.Position,
+    stalled: isStalled(s) && !pending[s.ID],
+    pending: Boolean(pending[s.ID]),
   }));
   const nextSortOrder = scopes.reduce((max, s) => Math.max(max, s.SortOrder), 0) + 1;
 
@@ -49,9 +72,16 @@ export function HillEditor({ slug }: { slug: string }) {
         <TitleForm slug={slug} title={hill.Title} />
       </header>
 
-      <HillChart
-        dots={dots}
-        onMove={(id, position) => move.mutate({ scopeId: id, position, note: "" })}
+      <HillChart dots={dots} onStage={stage} />
+
+      <PendingChanges
+        scopes={scopes}
+        pending={pending}
+        onNote={setNote}
+        onSave={saveMoves}
+        onDiscard={() => setPending({})}
+        saving={save.isPending}
+        failed={save.isError}
       />
 
       <section className="flex flex-col gap-3">
