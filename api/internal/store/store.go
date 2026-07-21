@@ -59,3 +59,9 @@ type Scope struct {
 	Note        string
 	MovedAt     time.Time
 }
+
+type Snapshot struct {
+	Position  int16
+	Note      string
+	CreatedAt time.Time
+}

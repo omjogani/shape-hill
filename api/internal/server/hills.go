@@ -140,6 +140,16 @@ func (s *Server) createScope(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, scope)
 }
 
+func (s *Server) scopeSnapshots(w http.ResponseWriter, r *http.Request) {
+	snapshots, err := s.store.SnapshotsForScope(r.Context(), r.PathValue("id"))
+	if err != nil {
+		s.log.Error("list snapshots", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not load snapshots")
+		return
+	}
+	writeJSON(w, http.StatusOK, snapshots)
+}
+
 func (s *Server) updateScope(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Title string `json:"title"`
