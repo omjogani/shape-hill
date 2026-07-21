@@ -1,26 +1,39 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Two themes, mirroring the Go renderer's styles.go. The chosen style is set on
+   <html data-style="…">, so picking a style changes the whole site, not just the
+   embed image. Each theme defines a light and a dark variant.
+   --------------------------------------------------------------------------- */
+
+/* "paper" — the default warm theme */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 
   --paper: #e9e7de;
   --hill: #dedbcb;
+  --line: #dedbcb;
   --ink: #1b211d;
   --sage: #5d665f;
   --alarm: #a9483a;
+
+  --display: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-paper: var(--paper);
-  --color-hill: var(--hill);
-  --color-ink: var(--ink);
-  --color-sage: var(--sage);
-  --color-alarm: var(--alarm);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* "github" — blends with a GitHub README */
+:root[data-style="github"] {
+  --background: #ffffff;
+  --foreground: #1f2328;
+
+  --paper: #ffffff;
+  --hill: #f6f8fa;
+  --line: #d0d7de;
+  --ink: #1f2328;
+  --sage: #656d76;
+  --alarm: #d1242f;
+
+  --display: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -30,10 +43,37 @@
 
     --paper: #121614;
     --hill: #1d2320;
+    --line: #1d2320;
     --ink: #dcddd3;
     --sage: #8b948c;
     --alarm: #d9806e;
   }
+
+  :root[data-style="github"] {
+    --background: #0d1117;
+    --foreground: #e6edf3;
+
+    --paper: #0d1117;
+    --hill: #161b22;
+    --line: #30363d;
+    --ink: #e6edf3;
+    --sage: #8b949e;
+    --alarm: #f85149;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-hill: var(--hill);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-sage: var(--sage);
+  --color-alarm: var(--alarm);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--display);
 }
 
 body {

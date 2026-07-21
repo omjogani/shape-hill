@@ -21,6 +21,12 @@ export type Scope = {
   MovedAt: string;
 };
 
+export type Snapshot = {
+  Position: number;
+  Note: string;
+  CreatedAt: string;
+};
+
 export type HillResponse = { hill: Hill; scopes: Scope[] };
 
 export class ApiError extends Error {
@@ -68,6 +74,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  scopeSnapshots: (scopeId: string) => request<Snapshot[]>(`/api/scopes/${scopeId}/positions`),
 
   updateScope: (scopeId: string, input: { title: string; color: string }) =>
     request<void>(`/api/scopes/${scopeId}`, {

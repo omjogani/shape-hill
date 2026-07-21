@@ -38,7 +38,7 @@ export function TitleForm({ slug, title }: { slug: string; title: string }) {
                 form.handleSubmit();
               }}
               aria-label="Hill title"
-              className="w-full bg-transparent font-serif text-3xl font-semibold tracking-tight text-ink focus:outline-none"
+              className="w-full bg-transparent font-display text-3xl font-semibold tracking-tight text-ink focus:outline-none"
             />
             <FieldError errors={field.state.meta.errors} />
           </div>

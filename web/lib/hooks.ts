@@ -9,6 +9,14 @@ export function useHill(slug: string) {
   return useQuery({ queryKey: key(slug), queryFn: () => api.getHill(slug) });
 }
 
+export function useScopeSnapshots(scopeId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["snapshots", scopeId],
+    queryFn: () => api.scopeSnapshots(scopeId),
+    enabled,
+  });
+}
+
 export function useUpdateTitle(slug: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -82,6 +90,9 @@ export function useSaveMoves(slug: string) {
   return useMutation({
     mutationFn: (moves: StagedMove[]) =>
       Promise.all(moves.map((m) => api.moveScope(m.scopeId, m.position, m.note))),
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(slug) }),
+    onSuccess: (_data, moves) => {
+      qc.invalidateQueries({ queryKey: key(slug) });
+      moves.forEach((m) => qc.invalidateQueries({ queryKey: ["snapshots", m.scopeId] }));
+    },
   });
 }

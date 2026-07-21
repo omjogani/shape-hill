@@ -9,7 +9,7 @@ const base =
 
 const variants = {
   primary: "bg-ink text-paper hover:opacity-90",
-  ghost: "border border-hill text-ink hover:bg-hill/40",
+  ghost: "border border-line text-ink hover:bg-hill/40",
 };
 
 export function Button({ variant = "primary", className = "", ...props }: Props) {
