@@ -8,6 +8,8 @@
 
 /* "paper" — the default warm theme */
 :root {
+  color-scheme: light; /* native <select>/options follow the theme's light/dark */
+
   --background: #ffffff;
   --foreground: #171717;
 
@@ -38,6 +40,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    color-scheme: dark;
+
     --background: #0a0a0a;
     --foreground: #ededed;
 
