@@ -4,6 +4,5 @@ export type ChartDot = {
   color: string;
   position: number;
   stalled: boolean;
-  /** Moved but not yet saved — drawn with a dashed halo. */
   pending?: boolean;
 };
