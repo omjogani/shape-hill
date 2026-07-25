@@ -95,6 +95,30 @@ func (s *Store) CreateScope(ctx context.Context, hillID, title, description, col
 	return scope, nil
 }
 
+func (s *Store) SnapshotsForScope(ctx context.Context, scopeID string) ([]Snapshot, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT position, coalesce(note, ''), created_at
+		FROM scope_positions
+		WHERE scope_id = $1::uuid
+		ORDER BY created_at DESC
+	`, scopeID)
+	if err != nil {
+		return nil, fmt.Errorf("list snapshots: %w", err)
+	}
+	defer rows.Close()
+
+	// Non-nil so an untouched scope marshals to [] rather than null.
+	snapshots := []Snapshot{}
+	for rows.Next() {
+		var snap Snapshot
+		if err := rows.Scan(&snap.Position, &snap.Note, &snap.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan snapshot: %w", err)
+		}
+		snapshots = append(snapshots, snap)
+	}
+	return snapshots, rows.Err()
+}
+
 func (s *Store) UpdateScope(ctx context.Context, scopeID, title, color string) error {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE scopes SET title = $2, color = $3

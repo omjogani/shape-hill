@@ -45,7 +45,7 @@ export function PendingChanges({
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: s.Color }}
                 />
-                <span className="font-serif text-sm text-ink">{s.Title}</span>
+                <span className="font-display text-sm text-ink">{s.Title}</span>
                 <span className="font-mono text-[11px] tabular-nums text-sage">
                   {s.Position}% → <span className="text-ink">{staged.position}%</span>
                 </span>

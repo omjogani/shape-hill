@@ -30,8 +30,10 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	style := hillchart.Style(r.URL.Query().Get("style"))
+
 	// ETag so a proxy can be told "nothing moved" without us drawing anything.
-	etag := fmt.Sprintf(`W/"%d"`, store.LastMovedOn(hill, scopes).UnixNano())
+	etag := fmt.Sprintf(`W/"%d-%s"`, store.LastMovedOn(hill, scopes).UnixNano(), style)
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "public, max-age=60, must-revalidate")
 	w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
@@ -41,7 +43,7 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(hillchart.Render(chartOf(hill, scopes)))
+	w.Write(hillchart.Render(chartOf(hill, scopes, style)))
 }
 
 func (s *Server) loadHill(w http.ResponseWriter, r *http.Request, slug string) (store.Hill, bool) {
@@ -68,8 +70,8 @@ func (s *Server) loadScopes(w http.ResponseWriter, r *http.Request, hillID strin
 	return scopes, true
 }
 
-func chartOf(hill store.Hill, scopes []store.Scope) hillchart.Chart {
-	chart := hillchart.Chart{Title: hill.Title}
+func chartOf(hill store.Hill, scopes []store.Scope, style hillchart.Style) hillchart.Chart {
+	chart := hillchart.Chart{Title: hill.Title, Style: style}
 	for _, scope := range scopes {
 		chart.Dots = append(chart.Dots, hillchart.Dot{
 			Label:    scope.Title,

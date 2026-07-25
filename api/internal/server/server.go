@@ -30,6 +30,7 @@ func New(st *store.Store, log *slog.Logger) *Server {
 	server.mux.HandleFunc("POST /api/hills/{slug}/scopes", server.createScope)
 	server.mux.HandleFunc("PATCH /api/scopes/{id}", server.updateScope)
 	server.mux.HandleFunc("DELETE /api/scopes/{id}", server.deleteScope)
+	server.mux.HandleFunc("GET /api/scopes/{id}/positions", server.scopeSnapshots)
 	server.mux.HandleFunc("POST /api/scopes/{id}/positions", server.moveScope)
 
 	return server
