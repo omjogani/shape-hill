@@ -5,6 +5,11 @@ import { api, type Hill, type HillResponse } from "./api";
 
 const key = (slug: string) => ["hill", slug] as const;
 
+// Optimistic cache edits: run `fn` over the scopes list, leaving an empty cache untouched.
+const patchScopes =
+  (fn: (scopes: HillResponse["scopes"]) => HillResponse["scopes"]) =>
+  (old: HillResponse | undefined) => (old ? { ...old, scopes: fn(old.scopes) } : old);
+
 export function useHill(slug: string) {
   return useQuery({ queryKey: key(slug), queryFn: () => api.getHill(slug) });
 }
@@ -43,15 +48,11 @@ export function useUpdateScope(slug: string) {
     onMutate: async (v) => {
       await qc.cancelQueries({ queryKey: key(slug) });
       const prev = qc.getQueryData<HillResponse>(key(slug));
-      qc.setQueryData<HillResponse>(key(slug), (old) =>
-        old
-          ? {
-              ...old,
-              scopes: old.scopes.map((s) =>
-                s.ID === v.scopeId ? { ...s, Title: v.title, Color: v.color } : s,
-              ),
-            }
-          : old,
+      qc.setQueryData<HillResponse>(
+        key(slug),
+        patchScopes((scopes) =>
+          scopes.map((s) => (s.ID === v.scopeId ? { ...s, Title: v.title, Color: v.color } : s)),
+        ),
       );
       return { prev };
     },
@@ -69,8 +70,9 @@ export function useDeleteScope(slug: string) {
     onMutate: async (scopeId) => {
       await qc.cancelQueries({ queryKey: key(slug) });
       const prev = qc.getQueryData<HillResponse>(key(slug));
-      qc.setQueryData<HillResponse>(key(slug), (old) =>
-        old ? { ...old, scopes: old.scopes.filter((s) => s.ID !== scopeId) } : old,
+      qc.setQueryData<HillResponse>(
+        key(slug),
+        patchScopes((scopes) => scopes.filter((s) => s.ID !== scopeId)),
       );
       return { prev };
     },
