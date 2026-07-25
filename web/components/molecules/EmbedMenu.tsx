@@ -63,7 +63,7 @@ export function EmbedMenu({ slug, title }: { slug: string; title: string }) {
               id="embed-style"
               value={style}
               onChange={(e) => setStyle(e.target.value)}
-              className="w-full rounded-md border border-line bg-transparent px-2.5 py-1.5 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sage"
+              className="w-full rounded-md border border-line bg-paper px-2.5 py-1.5 text-sm text-ink [&_option]:bg-paper [&_option]:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sage"
             >
               {STYLES.map((s) => (
                 <option key={s.value} value={s.value}>
