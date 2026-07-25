@@ -48,7 +48,7 @@ export function ScopeTimeline({
           return (
             <li key={`${snap.CreatedAt}-${i}`} className="relative">
               <span
-                className={`absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background ${marker}`}
+                className={`absolute -left-5.25 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background ${marker}`}
               />
               <div className="flex flex-wrap items-baseline gap-2">
                 <span className="font-mono text-xs font-semibold tabular-nums text-ink">

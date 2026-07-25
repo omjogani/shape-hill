@@ -38,7 +38,7 @@ export function ScopePanel({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center gap-2.5 px-1 py-2.5 text-left hover:bg-hill/30 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-sage"
+        className="flex w-full items-center gap-2.5 px-1 py-2.5 text-left hover:bg-hill/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sage"
       >
         <span
           className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[3px] font-mono text-[11px] font-semibold text-paper"
@@ -71,7 +71,7 @@ function ScopeBody({ slug, scope, stalled }: { slug: string; scope: Scope; stall
   const remove = useDeleteScope(slug);
 
   return (
-    <div className="pb-4 pl-[34px] pr-1 pt-0.5">
+    <div className="pb-4 pl-8.5 pr-1 pt-0.5">
       {editing ? (
         <EditScopeForm slug={slug} scope={scope} onDone={() => setEditing(false)} />
       ) : (
