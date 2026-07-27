@@ -61,6 +61,26 @@ func post(t *testing.T, url string, body any) (*http.Response, map[string]any) {
 	return resp, decoded
 }
 
+func patch(t *testing.T, url string, body any) *http.Response {
+	t.Helper()
+
+	payload, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest(http.MethodPatch, url, strings.NewReader(string(payload)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { resp.Body.Close() })
+	return resp
+}
+
 func TestHealth(t *testing.T) {
 	srv, _, _ := testServer(t)
 
@@ -160,8 +180,36 @@ func TestEmbedHidesPrivateHills(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("a private hill must not be embeddable: got %d, want 404", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("private hill embed = %d, want 200", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), "private") {
+		t.Error("a private hill's embed should say it is private")
+	}
+	if strings.Contains(string(body), "Secret roadmap") {
+		t.Error("a private hill's title must not leak in its embed")
+	}
+}
+
+func TestEmbedTogglesWithVisibility(t *testing.T) {
+	srv, _, user := testServer(t)
+
+	_, hill := post(t, srv.URL+"/api/hills", map[string]any{
+		"owner_id": user.ID, "title": "Billing v2", "is_public": false,
+	})
+	slug := hill["Slug"].(string)
+
+	patch(t, srv.URL+"/api/hills/"+slug, map[string]any{"is_public": true})
+
+	resp, err := http.Get(srv.URL + "/hill/" + slug + ".svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if strings.Contains(string(body), "private") {
+		t.Error("after being made public, the embed should render the chart, not the private card")
 	}
 }
 

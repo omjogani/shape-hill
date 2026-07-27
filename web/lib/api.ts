@@ -69,6 +69,12 @@ export const api = {
       body: JSON.stringify({ title }),
     }),
 
+  setVisibility: (slug: string, isPublic: boolean) =>
+    request<Hill>(`/api/hills/${slug}`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_public: isPublic }),
+    }),
+
   addScope: (slug: string, input: { title: string; color: string; sort_order: number }) =>
     request<Scope>(`/api/hills/${slug}/scopes`, {
       method: "POST",

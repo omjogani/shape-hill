@@ -25,12 +25,19 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	style := hillchart.Style(r.URL.Query().Get("style"))
+
+	if !hill.IsPublic {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
+		w.Write(hillchart.RenderPrivate(style))
+		return
+	}
+
 	scopes, ok := s.loadScopes(w, r, hill.ID)
 	if !ok {
 		return
 	}
-
-	style := hillchart.Style(r.URL.Query().Get("style"))
 
 	// ETag so a proxy can be told "nothing moved" without us drawing anything.
 	etag := fmt.Sprintf(`W/"%d-%s"`, store.LastMovedOn(hill, scopes).UnixNano(), style)
@@ -48,7 +55,7 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) loadHill(w http.ResponseWriter, r *http.Request, slug string) (store.Hill, bool) {
 	hill, err := s.store.HillBySlug(r.Context(), slug)
-	if errors.Is(err, store.ErrNotFound) || (err == nil && !hill.IsPublic) {
+	if errors.Is(err, store.ErrNotFound) {
 		http.NotFound(w, r)
 		return store.Hill{}, false
 	}

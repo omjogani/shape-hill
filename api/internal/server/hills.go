@@ -79,17 +79,22 @@ func (s *Server) getHill(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) updateHill(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Title string `json:"title"`
+		Title    *string `json:"title"`
+		IsPublic *bool   `json:"is_public"`
 	}
 	if !decode(w, r, &body) {
 		return
 	}
-	if body.Title == "" {
+	if body.Title == nil && body.IsPublic == nil {
+		writeError(w, http.StatusBadRequest, "nothing to update")
+		return
+	}
+	if body.Title != nil && *body.Title == "" {
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
 
-	hill, err := s.store.UpdateHillTitle(r.Context(), r.PathValue("slug"), body.Title)
+	hill, err := s.store.UpdateHill(r.Context(), r.PathValue("slug"), body.Title, body.IsPublic)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "hill not found")
 		return
