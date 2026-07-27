@@ -65,19 +65,22 @@ func (s *Store) HillBySlug(ctx context.Context, slug string) (Hill, error) {
 	return hill, nil
 }
 
-func (s *Store) UpdateHillTitle(ctx context.Context, slug, title string) (Hill, error) {
+func (s *Store) UpdateHill(ctx context.Context, slug string, title *string, isPublic *bool) (Hill, error) {
 	var hill Hill
 	err := s.pool.QueryRow(ctx, `
-		UPDATE hills SET title = $2, updated_at = now()
+		UPDATE hills
+		SET title = coalesce($2, title),
+		    is_public = coalesce($3, is_public),
+		    updated_at = now()
 		WHERE slug = $1
 		RETURNING id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, created_at, updated_at
-	`, slug, title).Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
+	`, slug, title, isPublic).Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
 		&hill.IsPublic, &hill.CreatedAt, &hill.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Hill{}, ErrNotFound
 	}
 	if err != nil {
-		return Hill{}, fmt.Errorf("update hill title: %w", err)
+		return Hill{}, fmt.Errorf("update hill: %w", err)
 	}
 	return hill, nil
 }

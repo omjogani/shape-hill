@@ -31,6 +31,15 @@ export function useUpdateTitle(slug: string) {
   });
 }
 
+export function useSetVisibility(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (isPublic: boolean) => api.setVisibility(slug, isPublic),
+    onSuccess: (hill: Hill) =>
+      qc.setQueryData<HillResponse>(key(slug), (prev) => (prev ? { ...prev, hill } : prev)),
+  });
+}
+
 export function useAddScope(slug: string) {
   const qc = useQueryClient();
   return useMutation({

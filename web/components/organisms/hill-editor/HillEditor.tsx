@@ -4,6 +4,7 @@ import type { Scope } from "@/lib/api";
 import { HillChart, type ChartDot } from "../hill-chart/HillChart";
 import { TitleForm } from "../../molecules/TitleForm";
 import { EmbedMenu } from "../../molecules/EmbedMenu";
+import { VisibilityToggle } from "../../molecules/VisibilityToggle";
 import { PendingChanges } from "../../molecules/PendingChanges";
 import { ScopeList } from "./ScopeList";
 import { useHillEditor } from "./useHillEditor";
@@ -52,7 +53,8 @@ export function HillEditor({ slug }: { slug: string }) {
           <p className="font-mono text-xs uppercase tracking-widest text-sage">shapehill</p>
           <TitleForm slug={slug} title={hill.Title} />
         </div>
-        <div className="pt-6">
+        <div className="flex items-center gap-4 pt-6">
+          <VisibilityToggle slug={slug} isPublic={hill.IsPublic} />
           <EmbedMenu slug={slug} title={hill.Title} />
         </div>
       </header>
