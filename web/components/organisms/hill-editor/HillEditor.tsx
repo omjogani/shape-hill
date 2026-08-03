@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { Scope } from "@/lib/api";
+import { Button } from "../../atoms/Button";
 import { HillChart, type ChartDot } from "../hill-chart/HillChart";
 import { TitleForm } from "../../molecules/TitleForm";
 import { EmbedMenu } from "../../molecules/EmbedMenu";
@@ -16,6 +18,7 @@ const isStalled = (s: Scope) =>
   Date.now() - new Date(s.MovedAt).getTime() > STALLED_AFTER_MS && s.Position < 100;
 
 export function HillEditor({ slug }: { slug: string }) {
+  const router = useRouter();
   const { query, save, unsavedMoves, openScopeId, stage, setNote, toggle, discard, saveMoves } =
     useHillEditor(slug);
   const { data, isLoading, isError, error } = query;
@@ -50,7 +53,9 @@ export function HillEditor({ slug }: { slug: string }) {
     <main className="mx-auto flex w-full max-w-[1700px] flex-col gap-8 px-8 py-8">
       <header className="flex items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-xs uppercase tracking-widest text-sage">shapehill</p>
+          <Button variant="ghost" onClick={() => router.push("/")}>
+            Back
+          </Button>
           <TitleForm slug={slug} title={hill.Title} />
         </div>
         <div className="flex items-center gap-4 pt-6">

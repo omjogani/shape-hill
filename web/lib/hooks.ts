@@ -10,8 +10,20 @@ const patchScopes =
   (fn: (scopes: HillResponse["scopes"]) => HillResponse["scopes"]) =>
   (old: HillResponse | undefined) => (old ? { ...old, scopes: fn(old.scopes) } : old);
 
+export function useHills() {
+  return useQuery({ queryKey: ["hills"], queryFn: () => api.listHills() });
+}
+
 export function useHill(slug: string) {
   return useQuery({ queryKey: key(slug), queryFn: () => api.getHill(slug) });
+}
+
+export function useCreateHill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { title: string; slug: string }) => api.createHill(v.title, v.slug),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hills"] }),
+  });
 }
 
 export function useScopeSnapshots(scopeId: string, enabled: boolean) {

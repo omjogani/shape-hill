@@ -99,7 +99,7 @@ func TestEmbedServesSVGAndHonoursETag(t *testing.T) {
 	srv, _, user := testServer(t)
 
 	_, hill := post(t, srv.URL+"/api/hills", map[string]any{
-		"owner_id": user.ID, "title": "Billing v2", "is_public": true,
+		"owner_id": user.ID, "slug": "billing-v2", "title": "Billing v2", "is_public": true,
 	})
 	slug := hill["Slug"].(string)
 
@@ -170,7 +170,7 @@ func TestEmbedHidesPrivateHills(t *testing.T) {
 	srv, _, user := testServer(t)
 
 	_, hill := post(t, srv.URL+"/api/hills", map[string]any{
-		"owner_id": user.ID, "title": "Secret roadmap", "is_public": false,
+		"owner_id": user.ID, "slug": "secret-roadmap", "title": "Secret roadmap", "is_public": false,
 	})
 	slug := hill["Slug"].(string)
 
@@ -196,7 +196,7 @@ func TestEmbedTogglesWithVisibility(t *testing.T) {
 	srv, _, user := testServer(t)
 
 	_, hill := post(t, srv.URL+"/api/hills", map[string]any{
-		"owner_id": user.ID, "title": "Billing v2", "is_public": false,
+		"owner_id": user.ID, "slug": "billing-v2", "title": "Billing v2", "is_public": false,
 	})
 	slug := hill["Slug"].(string)
 
@@ -231,7 +231,7 @@ func TestMoveScopeRejectsPositionOutOfRange(t *testing.T) {
 	srv, _, user := testServer(t)
 
 	_, hill := post(t, srv.URL+"/api/hills", map[string]any{
-		"owner_id": user.ID, "title": "Billing v2", "is_public": true,
+		"owner_id": user.ID, "slug": "billing-v2", "title": "Billing v2", "is_public": true,
 	})
 	_, scope := post(t, srv.URL+"/api/hills/"+hill["Slug"].(string)+"/scopes", map[string]any{"title": "Refunds"})
 

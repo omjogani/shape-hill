@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func (s *Store) CreateUser(ctx context.Context, email, username, name string) (User, error) {
@@ -30,22 +31,62 @@ func (s *Store) DeleteUser(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) CreateHill(ctx context.Context, ownerID, title, description string, isPublic bool) (Hill, error) {
-	slug, err := newSlug()
-	if err != nil {
-		return Hill{}, err
+// FirstUser is the earliest-created user — the owner stand-in until there's auth.
+func (s *Store) FirstUser(ctx context.Context) (User, error) {
+	var user User
+	err := s.pool.QueryRow(ctx, `
+		SELECT id::text, email, username, coalesce(name, '')
+		FROM users ORDER BY created_at LIMIT 1
+	`).Scan(&user.ID, &user.Email, &user.Username, &user.Name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrNotFound
 	}
+	if err != nil {
+		return User{}, fmt.Errorf("first user: %w", err)
+	}
+	return user, nil
+}
 
+func (s *Store) CreateHill(ctx context.Context, ownerID, slug, title, description string, isPublic bool) (Hill, error) {
 	hill := Hill{OwnerID: ownerID, Slug: slug, Title: title, Description: description, IsPublic: isPublic}
-	err = s.pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		INSERT INTO hills (owner_id, slug, title, description, is_public)
 		VALUES ($1::uuid, $2, $3, $4, $5)
 		RETURNING id::text, created_at, updated_at
 	`, ownerID, slug, title, description, isPublic).Scan(&hill.ID, &hill.CreatedAt, &hill.UpdatedAt)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return Hill{}, ErrSlugTaken
+	}
 	if err != nil {
 		return Hill{}, fmt.Errorf("create hill: %w", err)
 	}
 	return hill, nil
+}
+
+func (s *Store) ListHills(ctx context.Context) ([]Hill, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, created_at, updated_at
+		FROM hills
+		ORDER BY updated_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list hills: %w", err)
+	}
+	defer rows.Close()
+
+	// Non-nil so an empty table marshals to [] rather than null.
+	hills := []Hill{}
+	for rows.Next() {
+		var hill Hill
+		if err := rows.Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
+			&hill.IsPublic, &hill.CreatedAt, &hill.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan hill: %w", err)
+		}
+		hills = append(hills, hill)
+	}
+	return hills, rows.Err()
 }
 
 func (s *Store) HillBySlug(ctx context.Context, slug string) (Hill, error) {
@@ -173,7 +214,7 @@ func (s *Store) ScopesForHill(ctx context.Context, hillID string) ([]Scope, erro
 	}
 	defer rows.Close()
 
-	var scopes []Scope
+	scopes := []Scope{}
 	for rows.Next() {
 		var scope Scope
 		if err := rows.Scan(&scope.ID, &scope.Title, &scope.Description, &scope.Color,
