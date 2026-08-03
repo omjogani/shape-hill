@@ -20,6 +20,9 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
+
 	hill, ok := s.loadHill(w, r, slug)
 	if !ok {
 		return
