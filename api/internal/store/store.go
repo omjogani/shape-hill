@@ -10,6 +10,7 @@ import (
 )
 
 var ErrNotFound = errors.New("not found")
+var ErrSlugTaken = errors.New("slug already taken")
 
 type Store struct {
 	pool *pgxpool.Pool

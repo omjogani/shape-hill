@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
 
 	"github.com/omjogani/shape-hill/internal/store"
 )
+
+// Slugs live in URLs and get typed by hand: lowercase words joined by single hyphens.
+var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 	var body struct {
@@ -44,6 +48,7 @@ func (s *Server) listHills(w http.ResponseWriter, r *http.Request) {
 func (s *Server) createHill(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		OwnerID     string `json:"owner_id"`
+		Slug        string `json:"slug"`
 		Title       string `json:"title"`
 		Description string `json:"description"`
 		IsPublic    bool   `json:"is_public"`
@@ -51,12 +56,34 @@ func (s *Server) createHill(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &body) {
 		return
 	}
-	if body.OwnerID == "" || body.Title == "" {
-		writeError(w, http.StatusBadRequest, "owner_id and title are required")
+	if body.Title == "" {
+		writeError(w, http.StatusBadRequest, "title is required")
+		return
+	}
+	if !slugPattern.MatchString(body.Slug) {
+		writeError(w, http.StatusBadRequest, "slug must be lowercase letters, numbers and hyphens")
 		return
 	}
 
-	hill, err := s.store.CreateHill(r.Context(), body.OwnerID, body.Title, body.Description, body.IsPublic)
+	if body.OwnerID == "" {
+		owner, err := s.store.FirstUser(r.Context())
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusBadRequest, "no user to own the hill")
+			return
+		}
+		if err != nil {
+			s.log.Error("first user", "err", err)
+			writeError(w, http.StatusInternalServerError, "could not create hill")
+			return
+		}
+		body.OwnerID = owner.ID
+	}
+
+	hill, err := s.store.CreateHill(r.Context(), body.OwnerID, body.Slug, body.Title, body.Description, body.IsPublic)
+	if errors.Is(err, store.ErrSlugTaken) {
+		writeError(w, http.StatusConflict, "that slug is already taken")
+		return
+	}
 	if err != nil {
 		s.log.Error("create hill", "err", err)
 		writeError(w, http.StatusInternalServerError, "could not create hill")

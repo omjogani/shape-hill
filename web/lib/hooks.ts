@@ -18,6 +18,14 @@ export function useHill(slug: string) {
   return useQuery({ queryKey: key(slug), queryFn: () => api.getHill(slug) });
 }
 
+export function useCreateHill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { title: string; slug: string }) => api.createHill(v.title, v.slug),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hills"] }),
+  });
+}
+
 export function useScopeSnapshots(scopeId: string, enabled: boolean) {
   return useQuery({
     queryKey: ["snapshots", scopeId],

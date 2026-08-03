@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 )
@@ -41,44 +40,21 @@ func testUser(t *testing.T, st *Store) User {
 	return user
 }
 
-func TestSlugIsRandomAndReadable(t *testing.T) {
-	seen := make(map[string]bool)
-	for i := 0; i < 500; i++ {
-		slug, err := newSlug()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(slug) != slugLength {
-			t.Fatalf("slug %q has length %d, want %d", slug, len(slug), slugLength)
-		}
-		if strings.ContainsAny(slug, "0O1lI") {
-			t.Errorf("slug %q contains an ambiguous character", slug)
-		}
-		if seen[slug] {
-			t.Fatalf("slug %q generated twice in 500 tries", slug)
-		}
-		seen[slug] = true
-	}
-}
-
-func TestCreateHillGetsAUniqueSlug(t *testing.T) {
+func TestCreateHillRejectsDuplicateSlug(t *testing.T) {
 	st := testStore(t)
 	ctx := context.Background()
 	user := testUser(t, st)
 
-	first, err := st.CreateHill(ctx, user.ID, "Billing v2", "", true)
+	first, err := st.CreateHill(ctx, user.ID, "billing-v2", "Billing v2", "", true)
 	if err != nil {
 		t.Fatal(err)
-	}
-	second, err := st.CreateHill(ctx, user.ID, "Billing v2", "", true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if first.Slug == second.Slug {
-		t.Fatal("two hills with the same title must not share a slug")
 	}
 
-	found, err := st.HillBySlug(ctx, first.Slug)
+	if _, err := st.CreateHill(ctx, user.ID, "billing-v2", "Billing v2 again", "", true); !errors.Is(err, ErrSlugTaken) {
+		t.Fatalf("want ErrSlugTaken for a duplicate slug, got %v", err)
+	}
+
+	found, err := st.HillBySlug(ctx, "billing-v2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +68,7 @@ func TestListHillsIncludesCreatedHill(t *testing.T) {
 	ctx := context.Background()
 	user := testUser(t, st)
 
-	hill, err := st.CreateHill(ctx, user.ID, "Billing v2", "", true)
+	hill, err := st.CreateHill(ctx, user.ID, "list-hills", "Billing v2", "", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +102,7 @@ func TestUnmovedScopeSitsAtZero(t *testing.T) {
 	ctx := context.Background()
 	user := testUser(t, st)
 
-	hill, err := st.CreateHill(ctx, user.ID, "Billing v2", "", true)
+	hill, err := st.CreateHill(ctx, user.ID, "unmoved-scope", "Billing v2", "", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +127,7 @@ func TestMoveScopeAppendsAndLatestWins(t *testing.T) {
 	ctx := context.Background()
 	user := testUser(t, st)
 
-	hill, err := st.CreateHill(ctx, user.ID, "Billing v2", "", true)
+	hill, err := st.CreateHill(ctx, user.ID, "move-scope", "Billing v2", "", true)
 	if err != nil {
 		t.Fatal(err)
 	}

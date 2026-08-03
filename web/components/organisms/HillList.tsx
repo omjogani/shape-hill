@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { useHills } from "@/lib/hooks";
+import { NewHillDialog } from "../molecules/NewHillDialog";
 
 export function HillList() {
   const { data: hills, isLoading, isError, error } = useHills();
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-8 py-12">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-widest text-sage">shapehill</p>
-        <h1 className="font-display text-3xl">Hill charts</h1>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-widest text-sage">shapehill</p>
+          <h1 className="font-display text-3xl">Hill charts</h1>
+        </div>
+        <NewHillDialog />
       </header>
 
       {isLoading && <p className="text-sm text-sage">Loading charts…</p>}
