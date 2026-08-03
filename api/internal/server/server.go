@@ -24,6 +24,7 @@ func New(st *store.Store, log *slog.Logger) *Server {
 	server.mux.HandleFunc("GET /healthz", server.health)
 	server.mux.HandleFunc("GET /hill/{file}", server.embed)
 	server.mux.HandleFunc("POST /api/users", server.createUser)
+	server.mux.HandleFunc("GET /api/hills", server.listHills)
 	server.mux.HandleFunc("POST /api/hills", server.createHill)
 	server.mux.HandleFunc("GET /api/hills/{slug}", server.getHill)
 	server.mux.HandleFunc("PATCH /api/hills/{slug}", server.updateHill)

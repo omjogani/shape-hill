@@ -61,6 +61,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  listHills: () => request<Hill[]>(`/api/hills`),
+
   getHill: (slug: string) => request<HillResponse>(`/api/hills/${slug}`),
 
   updateTitle: (slug: string, title: string) =>

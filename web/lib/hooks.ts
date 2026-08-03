@@ -10,6 +10,10 @@ const patchScopes =
   (fn: (scopes: HillResponse["scopes"]) => HillResponse["scopes"]) =>
   (old: HillResponse | undefined) => (old ? { ...old, scopes: fn(old.scopes) } : old);
 
+export function useHills() {
+  return useQuery({ queryKey: ["hills"], queryFn: () => api.listHills() });
+}
+
 export function useHill(slug: string) {
   return useQuery({ queryKey: key(slug), queryFn: () => api.getHill(slug) });
 }

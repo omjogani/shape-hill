@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Scope } from "@/lib/api";
 import { HillChart, type ChartDot } from "../hill-chart/HillChart";
 import { TitleForm } from "../../molecules/TitleForm";
@@ -50,7 +51,12 @@ export function HillEditor({ slug }: { slug: string }) {
     <main className="mx-auto flex w-full max-w-[1700px] flex-col gap-8 px-8 py-8">
       <header className="flex items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-xs uppercase tracking-widest text-sage">shapehill</p>
+          <Link
+            href="/"
+            className="font-mono text-xs uppercase tracking-widest text-sage hover:text-ink"
+          >
+            ← shapehill
+          </Link>
           <TitleForm slug={slug} title={hill.Title} />
         </div>
         <div className="flex items-center gap-4 pt-6">

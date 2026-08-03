@@ -87,6 +87,31 @@ func TestCreateHillGetsAUniqueSlug(t *testing.T) {
 	}
 }
 
+func TestListHillsIncludesCreatedHill(t *testing.T) {
+	st := testStore(t)
+	ctx := context.Background()
+	user := testUser(t, st)
+
+	hill, err := st.CreateHill(ctx, user.ID, "Billing v2", "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hills, err := st.ListHills(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, h := range hills {
+		if h.ID == hill.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("ListHills omitted the created hill %s", hill.Slug)
+	}
+}
+
 func TestHillBySlugReportsNotFound(t *testing.T) {
 	st := testStore(t)
 

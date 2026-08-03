@@ -31,6 +31,16 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, user)
 }
 
+func (s *Server) listHills(w http.ResponseWriter, r *http.Request) {
+	hills, err := s.store.ListHills(r.Context())
+	if err != nil {
+		s.log.Error("list hills", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not load hills")
+		return
+	}
+	writeJSON(w, http.StatusOK, hills)
+}
+
 func (s *Server) createHill(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		OwnerID     string `json:"owner_id"`

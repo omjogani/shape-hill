@@ -48,6 +48,30 @@ func (s *Store) CreateHill(ctx context.Context, ownerID, title, description stri
 	return hill, nil
 }
 
+func (s *Store) ListHills(ctx context.Context) ([]Hill, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, created_at, updated_at
+		FROM hills
+		ORDER BY updated_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list hills: %w", err)
+	}
+	defer rows.Close()
+
+	// Non-nil so an empty table marshals to [] rather than null.
+	hills := []Hill{}
+	for rows.Next() {
+		var hill Hill
+		if err := rows.Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
+			&hill.IsPublic, &hill.CreatedAt, &hill.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan hill: %w", err)
+		}
+		hills = append(hills, hill)
+	}
+	return hills, rows.Err()
+}
+
 func (s *Store) HillBySlug(ctx context.Context, slug string) (Hill, error) {
 	var hill Hill
 	err := s.pool.QueryRow(ctx, `
