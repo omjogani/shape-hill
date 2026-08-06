@@ -13,16 +13,18 @@ import (
 const stalledAfter = 7 * 24 * time.Hour
 
 type Server struct {
-	store *store.Store
-	log   *slog.Logger
-	mux   *http.ServeMux
+	store  *store.Store
+	log    *slog.Logger
+	mux    *http.ServeMux
+	verify VerifyToken
 }
 
-func New(st *store.Store, log *slog.Logger) *Server {
-	server := &Server{store: st, log: log, mux: http.NewServeMux()}
+func New(st *store.Store, log *slog.Logger, verify VerifyToken) *Server {
+	server := &Server{store: st, log: log, mux: http.NewServeMux(), verify: verify}
 
 	server.mux.HandleFunc("GET /healthz", server.health)
 	server.mux.HandleFunc("GET /hill/{file}", server.embed)
+	server.mux.HandleFunc("GET /api/me", server.authenticate(server.me))
 	server.mux.HandleFunc("POST /api/users", server.createUser)
 	server.mux.HandleFunc("GET /api/hills", server.listHills)
 	server.mux.HandleFunc("POST /api/hills", server.createHill)

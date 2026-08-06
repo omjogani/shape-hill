@@ -26,7 +26,7 @@ func testServer(t *testing.T) (*httptest.Server, *store.Store, store.User) {
 	t.Cleanup(db.Close)
 
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := httptest.NewServer(New(db, quiet))
+	srv := httptest.NewServer(New(db, quiet, fakeVerify))
 	t.Cleanup(srv.Close)
 
 	unique := strconv.FormatInt(time.Now().UnixNano(), 36)
