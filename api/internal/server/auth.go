@@ -18,8 +18,6 @@ type Identity struct {
 	Email      string
 }
 
-// VerifyToken checks a Supabase access token and returns its identity. It is an
-// injection point so tests can verify the middleware without reaching Supabase.
 type VerifyToken func(ctx context.Context, token string) (Identity, error)
 
 // caller is what authenticate attaches to the request context: the verified
@@ -33,8 +31,6 @@ type ctxKey int
 
 const callerKey ctxKey = 0
 
-// authenticate rejects requests without a valid token, then resolves the local
-// user (leaving it nil for an authenticated-but-not-onboarded caller).
 func (s *Server) authenticate(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, ok := bearer(r)

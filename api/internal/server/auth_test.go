@@ -10,11 +10,11 @@ import (
 
 // fakeVerify stands in for Supabase: it treats the token string as the auth
 // user id, so a test picks an identity by choosing its bearer token. "bad" fails.
-func fakeVerify(_ context.Context, token string) (Identity, error) {
+func fakeVerify(_ context.Context, token string) (AuthUser, error) {
 	if token == "bad" {
-		return Identity{}, errors.New("bad token")
+		return AuthUser{}, errors.New("bad token")
 	}
-	return Identity{AuthUserID: token, Email: "caller@example.com"}, nil
+	return AuthUser{ID: token, Email: "caller@example.com"}, nil
 }
 
 func getWithToken(t *testing.T, url, token string) *http.Response {
