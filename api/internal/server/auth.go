@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/MicahParks/keyfunc/v3"
@@ -12,19 +13,16 @@ import (
 	"github.com/omjogani/shape-hill/internal/store"
 )
 
-// Identity is who a verified Supabase access token says the caller is.
-type Identity struct {
-	AuthUserID string
-	Email      string
+type AuthUser struct {
+	ID    string
+	Email string
 }
 
-type VerifyToken func(ctx context.Context, token string) (Identity, error)
+type VerifyToken func(ctx context.Context, token string) (AuthUser, error)
 
-// caller is what authenticate attaches to the request context: the verified
-// identity, plus the local account — which is nil until the caller has onboarded.
 type caller struct {
-	Identity
-	User *store.User
+	AuthUser
+	Account *store.User
 }
 
 type ctxKey int
@@ -46,17 +44,17 @@ func (s *Server) authenticate(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		c := caller{Identity: id}
-		user, err := s.store.UserByAuthID(r.Context(), id.AuthUserID)
+		c := caller{AuthUser: id}
+		user, err := s.store.UserByAuthID(r.Context(), id.ID)
 		switch {
 		case errors.Is(err, store.ErrNotFound):
-			// Authenticated but not onboarded — User stays nil.
+			// Authenticated but not onboarded — Account stays nil.
 		case err != nil:
 			s.log.Error("resolve user", "err", err)
 			writeError(w, http.StatusInternalServerError, "could not resolve user")
 			return
 		default:
-			c.User = &user
+			c.Account = &user
 		}
 
 		ctx := context.WithValue(r.Context(), callerKey, c)
@@ -77,15 +75,56 @@ func bearer(r *http.Request) (string, bool) {
 	return token, true
 }
 
-// me tells the frontend whether this caller has a local account yet, so it can
-// route them to onboarding or into the app.
-func (s *Server) me(w http.ResponseWriter, r *http.Request) {
+func (s *Server) currentUser(w http.ResponseWriter, r *http.Request) {
 	c, _ := callerFrom(r.Context())
-	if c.User == nil {
+	if c.Account == nil {
 		writeJSON(w, http.StatusOK, map[string]any{"onboarded": false, "email": c.Email})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"onboarded": true, "user": c.User})
+	writeJSON(w, http.StatusOK, map[string]any{"onboarded": true, "user": c.Account})
+}
+
+// Usernames are lowercase handles: a letter or digit, then 2–29 more of letter,
+// digit, underscore or hyphen.
+var usernamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{2,29}$`)
+
+func (s *Server) onboard(w http.ResponseWriter, r *http.Request) {
+	c, _ := callerFrom(r.Context())
+	if c.Account != nil {
+		writeError(w, http.StatusConflict, "already onboarded")
+		return
+	}
+
+	var body struct {
+		Username string `json:"username"`
+		Name     string `json:"name"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+
+	username := strings.ToLower(strings.TrimSpace(body.Username))
+	if !usernamePattern.MatchString(username) {
+		writeError(w, http.StatusBadRequest, "username must be 3–30 chars: lowercase letters, numbers, _ or -")
+		return
+	}
+
+	// Email comes from the verified token, never the body: it is what links a
+	// returning person to an account already registered under that address.
+	user, err := s.store.OnboardUser(r.Context(), c.ID, c.Email, username, strings.TrimSpace(body.Name))
+	switch {
+	case errors.Is(err, store.ErrUsernameTaken):
+		writeError(w, http.StatusConflict, "that username is taken")
+		return
+	case errors.Is(err, store.ErrEmailTaken):
+		writeError(w, http.StatusConflict, "an account already exists for this email")
+		return
+	case err != nil:
+		s.log.Error("onboard user", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not create account")
+		return
+	}
+	writeJSON(w, http.StatusCreated, user)
 }
 
 // NewSupabaseVerifier verifies access tokens against the project's public JWKS.
@@ -101,7 +140,7 @@ func NewSupabaseVerifier(ctx context.Context, supabaseURL string) (VerifyToken, 
 		return nil, fmt.Errorf("load jwks: %w", err)
 	}
 
-	return func(_ context.Context, raw string) (Identity, error) {
+	return func(_ context.Context, raw string) (AuthUser, error) {
 		var claims struct {
 			Email string `json:"email"`
 			jwt.RegisteredClaims
@@ -112,11 +151,11 @@ func NewSupabaseVerifier(ctx context.Context, supabaseURL string) (VerifyToken, 
 			jwt.WithAudience("authenticated"),
 			jwt.WithExpirationRequired(),
 		); err != nil {
-			return Identity{}, err
+			return AuthUser{}, err
 		}
 		if claims.Subject == "" {
-			return Identity{}, errors.New("token has no subject")
+			return AuthUser{}, errors.New("token has no subject")
 		}
-		return Identity{AuthUserID: claims.Subject, Email: claims.Email}, nil
+		return AuthUser{ID: claims.Subject, Email: claims.Email}, nil
 	}, nil
 }

@@ -62,6 +62,43 @@ func (s *Store) UserByAuthID(ctx context.Context, authUserID string) (User, erro
 	return user, nil
 }
 
+// OnboardUser ties the caller's Supabase identity to a local account: it adopts
+// an existing row with the same email (link-by-email), otherwise creates one.
+// The email must come from the verified token — it is the linking key.
+func (s *Store) OnboardUser(ctx context.Context, authUserID, email, username, name string) (User, error) {
+	var user User
+	err := s.pool.QueryRow(ctx, `
+		WITH linked AS (
+			UPDATE users SET auth_user_id = $1::uuid
+			WHERE lower(email) = lower($2) AND auth_user_id IS NULL
+			RETURNING id, email, username, name
+		),
+		created AS (
+			INSERT INTO users (auth_user_id, email, username, name)
+			SELECT $1::uuid, $2, $3, NULLIF($4, '')
+			WHERE NOT EXISTS (SELECT 1 FROM linked)
+			RETURNING id, email, username, name
+		)
+		SELECT id::text, email, username, coalesce(name, '') FROM linked
+		UNION ALL
+		SELECT id::text, email, username, coalesce(name, '') FROM created
+	`, authUserID, email, username, name).Scan(&user.ID, &user.Email, &user.Username, &user.Name)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		switch pgErr.ConstraintName {
+		case "users_username_key":
+			return User{}, ErrUsernameTaken
+		case "users_email_key":
+			return User{}, ErrEmailTaken
+		}
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("onboard user: %w", err)
+	}
+	return user, nil
+}
+
 func (s *Store) CreateHill(ctx context.Context, ownerID, slug, title, description string, isPublic bool) (Hill, error) {
 	hill := Hill{OwnerID: ownerID, Slug: slug, Title: title, Description: description, IsPublic: isPublic}
 	err := s.pool.QueryRow(ctx, `

@@ -12,29 +12,6 @@ import (
 // Slugs live in URLs and get typed by hand: lowercase words joined by single hyphens.
 var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
-func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Email    string `json:"email"`
-		Username string `json:"username"`
-		Name     string `json:"name"`
-	}
-	if !decode(w, r, &body) {
-		return
-	}
-	if body.Email == "" || body.Username == "" {
-		writeError(w, http.StatusBadRequest, "email and username are required")
-		return
-	}
-
-	user, err := s.store.CreateUser(r.Context(), body.Email, body.Username, body.Name)
-	if err != nil {
-		s.log.Error("create user", "err", err)
-		writeError(w, http.StatusInternalServerError, "could not create user")
-		return
-	}
-	writeJSON(w, http.StatusCreated, user)
-}
-
 func (s *Server) listHills(w http.ResponseWriter, r *http.Request) {
 	hills, err := s.store.ListHills(r.Context())
 	if err != nil {
