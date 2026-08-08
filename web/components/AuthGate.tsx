@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMe, useSession } from "@/lib/auth";
 
@@ -22,12 +22,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   const onboarded = me.data?.onboarded;
 
-  // On any user change (including sign-out) drop cached data so one account never
-  // shows another's hills or onboarding state. Harmless on first load: nothing is
-  // cached yet.
+  // Drop cached data only when the signed-in user actually changes (a switch or a
+  // sign-out) so one account never shows another's hills. Crucially NOT on the
+  // initial null→id load: clearing there wipes the in-flight /api/me query and
+  // hangs the gate on "Loading…" forever.
   const userId = session?.user?.id ?? null;
+  const prevUserId = useRef<string | null>(null);
   useEffect(() => {
-    qc.clear();
+    if (prevUserId.current !== null && prevUserId.current !== userId) {
+      qc.clear();
+    }
+    prevUserId.current = userId;
   }, [userId, qc]);
 
   useEffect(() => {
