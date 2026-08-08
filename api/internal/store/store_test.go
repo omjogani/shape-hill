@@ -73,7 +73,7 @@ func TestListHillsIncludesCreatedHill(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hills, err := st.ListHills(ctx)
+	hills, err := st.ListHillsByOwner(ctx, user.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestListHillsIncludesCreatedHill(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("ListHills omitted the created hill %s", hill.Slug)
+		t.Fatalf("ListHillsByOwner omitted the created hill %s", hill.Slug)
 	}
 }
 
@@ -167,7 +167,8 @@ func TestMoveScopeAppendsAndLatestWins(t *testing.T) {
 func TestMoveUnknownScopeReportsNotFound(t *testing.T) {
 	st := testStore(t)
 
-	err := st.MoveScope(context.Background(), "00000000-0000-0000-0000-000000000000", 50, "", "")
+	zero := "00000000-0000-0000-0000-000000000000"
+	err := st.MoveScope(context.Background(), zero, 50, "", zero)
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("want ErrNotFound moving a scope that does not exist, got %v", err)
 	}

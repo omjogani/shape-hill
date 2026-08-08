@@ -87,7 +87,7 @@ func postWithToken(t *testing.T, url, token string, body any) (*http.Response, m
 }
 
 func TestMeRejectsMissingToken(t *testing.T) {
-	srv, _, _ := testServer(t)
+	srv, _, _, _ := testServer(t)
 
 	if resp := getWithToken(t, srv.URL+"/api/me", ""); resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("no token = %d, want 401", resp.StatusCode)
@@ -95,7 +95,7 @@ func TestMeRejectsMissingToken(t *testing.T) {
 }
 
 func TestMeRejectsInvalidToken(t *testing.T) {
-	srv, _, _ := testServer(t)
+	srv, _, _, _ := testServer(t)
 
 	if resp := getWithToken(t, srv.URL+"/api/me", "bad"); resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("bad token = %d, want 401", resp.StatusCode)
@@ -103,7 +103,7 @@ func TestMeRejectsInvalidToken(t *testing.T) {
 }
 
 func TestMeReportsNotOnboarded(t *testing.T) {
-	srv, _, _ := testServer(t)
+	srv, _, _, _ := testServer(t)
 
 	resp := getWithToken(t, srv.URL+"/api/me", newAuthID(t))
 	if resp.StatusCode != http.StatusOK {
@@ -121,7 +121,7 @@ func TestMeReportsNotOnboarded(t *testing.T) {
 }
 
 func TestOnboardCreatesAccount(t *testing.T) {
-	srv, db, _ := testServer(t)
+	srv, db, _, _ := testServer(t)
 	token := newAuthID(t)
 
 	resp, body := postWithToken(t, srv.URL+"/api/onboard", token, map[string]any{"username": "alice" + shortID()})
@@ -145,7 +145,7 @@ func TestOnboardCreatesAccount(t *testing.T) {
 }
 
 func TestOnboardLinksByEmail(t *testing.T) {
-	srv, db, _ := testServer(t)
+	srv, db, _, _ := testServer(t)
 	token := newAuthID(t)
 
 	// A pre-auth row already exists for this token's email (auth_user_id still NULL).
@@ -168,7 +168,7 @@ func TestOnboardLinksByEmail(t *testing.T) {
 }
 
 func TestOnboardRejectsDuplicateUsername(t *testing.T) {
-	srv, db, _ := testServer(t)
+	srv, db, _, _ := testServer(t)
 	taken := "dup" + shortID()
 
 	first, err := db.CreateUser(context.Background(), newAuthID(t)+"@example.com", taken, "")
@@ -185,7 +185,7 @@ func TestOnboardRejectsDuplicateUsername(t *testing.T) {
 }
 
 func TestOnboardRejectsWhenAlreadyOnboarded(t *testing.T) {
-	srv, db, _ := testServer(t)
+	srv, db, _, _ := testServer(t)
 	token := newAuthID(t)
 
 	resp, body := postWithToken(t, srv.URL+"/api/onboard", token, map[string]any{"username": "once" + shortID()})
@@ -201,7 +201,7 @@ func TestOnboardRejectsWhenAlreadyOnboarded(t *testing.T) {
 }
 
 func TestOnboardRejectsBadUsername(t *testing.T) {
-	srv, _, _ := testServer(t)
+	srv, _, _, _ := testServer(t)
 
 	resp, _ := postWithToken(t, srv.URL+"/api/onboard", newAuthID(t), map[string]any{"username": "ab"})
 	if resp.StatusCode != http.StatusBadRequest {

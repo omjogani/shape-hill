@@ -62,9 +62,24 @@ func (s *Server) authenticate(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (s *Server) authed(next http.HandlerFunc) http.HandlerFunc {
+	return s.authenticate(func(w http.ResponseWriter, r *http.Request) {
+		if c, _ := callerFrom(r.Context()); c.Account == nil {
+			writeError(w, http.StatusForbidden, "complete onboarding first")
+			return
+		}
+		next(w, r)
+	})
+}
+
 func callerFrom(ctx context.Context) (caller, bool) {
 	c, ok := ctx.Value(callerKey).(caller)
 	return c, ok
+}
+
+func ownerID(r *http.Request) string {
+	c, _ := callerFrom(r.Context())
+	return c.Account.ID
 }
 
 func bearer(r *http.Request) (string, bool) {
