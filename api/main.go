@@ -40,7 +40,11 @@ func run() error {
 	}
 	defer db.Close()
 
-	return serve(ctx, newServer(cfg, db, log), log)
+	srv, err := newServer(ctx, cfg, db, log)
+	if err != nil {
+		return err
+	}
+	return serve(ctx, srv, log)
 }
 
 func loadConfig() (*config.Config, error) {
@@ -55,12 +59,16 @@ func openStore(ctx context.Context, databaseURL string) (*store.Store, error) {
 	return store.New(ctx, databaseURL)
 }
 
-func newServer(cfg *config.Config, db *store.Store, log *slog.Logger) *http.Server {
+func newServer(ctx context.Context, cfg *config.Config, db *store.Store, log *slog.Logger) (*http.Server, error) {
+	verify, err := server.NewSupabaseVerifier(ctx, cfg.SupabaseURL)
+	if err != nil {
+		return nil, err
+	}
 	return &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           server.New(db, log),
+		Handler:           server.New(db, log, verify),
 		ReadHeaderTimeout: 5 * time.Second,
-	}
+	}, nil
 }
 
 func serve(ctx context.Context, srv *http.Server, log *slog.Logger) error {

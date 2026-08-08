@@ -47,6 +47,21 @@ func (s *Store) FirstUser(ctx context.Context) (User, error) {
 	return user, nil
 }
 
+func (s *Store) UserByAuthID(ctx context.Context, authUserID string) (User, error) {
+	var user User
+	err := s.pool.QueryRow(ctx, `
+		SELECT id::text, email, username, coalesce(name, '')
+		FROM users WHERE auth_user_id = $1::uuid
+	`, authUserID).Scan(&user.ID, &user.Email, &user.Username, &user.Name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("user by auth id: %w", err)
+	}
+	return user, nil
+}
+
 func (s *Store) CreateHill(ctx context.Context, ownerID, slug, title, description string, isPublic bool) (Hill, error) {
 	hill := Hill{OwnerID: ownerID, Slug: slug, Title: title, Description: description, IsPublic: isPublic}
 	err := s.pool.QueryRow(ctx, `
