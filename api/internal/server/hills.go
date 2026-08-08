@@ -12,31 +12,8 @@ import (
 // Slugs live in URLs and get typed by hand: lowercase words joined by single hyphens.
 var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
-func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Email    string `json:"email"`
-		Username string `json:"username"`
-		Name     string `json:"name"`
-	}
-	if !decode(w, r, &body) {
-		return
-	}
-	if body.Email == "" || body.Username == "" {
-		writeError(w, http.StatusBadRequest, "email and username are required")
-		return
-	}
-
-	user, err := s.store.CreateUser(r.Context(), body.Email, body.Username, body.Name)
-	if err != nil {
-		s.log.Error("create user", "err", err)
-		writeError(w, http.StatusInternalServerError, "could not create user")
-		return
-	}
-	writeJSON(w, http.StatusCreated, user)
-}
-
 func (s *Server) listHills(w http.ResponseWriter, r *http.Request) {
-	hills, err := s.store.ListHills(r.Context())
+	hills, err := s.store.ListHillsByOwner(r.Context(), ownerID(r))
 	if err != nil {
 		s.log.Error("list hills", "err", err)
 		writeError(w, http.StatusInternalServerError, "could not load hills")
@@ -47,7 +24,6 @@ func (s *Server) listHills(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createHill(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		OwnerID     string `json:"owner_id"`
 		Slug        string `json:"slug"`
 		Title       string `json:"title"`
 		Description string `json:"description"`
@@ -65,21 +41,7 @@ func (s *Server) createHill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.OwnerID == "" {
-		owner, err := s.store.FirstUser(r.Context())
-		if errors.Is(err, store.ErrNotFound) {
-			writeError(w, http.StatusBadRequest, "no user to own the hill")
-			return
-		}
-		if err != nil {
-			s.log.Error("first user", "err", err)
-			writeError(w, http.StatusInternalServerError, "could not create hill")
-			return
-		}
-		body.OwnerID = owner.ID
-	}
-
-	hill, err := s.store.CreateHill(r.Context(), body.OwnerID, body.Slug, body.Title, body.Description, body.IsPublic)
+	hill, err := s.store.CreateHill(r.Context(), ownerID(r), body.Slug, body.Title, body.Description, body.IsPublic)
 	if errors.Is(err, store.ErrSlugTaken) {
 		writeError(w, http.StatusConflict, "that slug is already taken")
 		return
@@ -101,6 +63,11 @@ func (s *Server) getHill(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.log.Error("get hill", "err", err)
 		writeError(w, http.StatusInternalServerError, "could not load hill")
+		return
+	}
+
+	if hill.OwnerID != ownerID(r) {
+		writeError(w, http.StatusNotFound, "hill not found")
 		return
 	}
 
@@ -131,7 +98,7 @@ func (s *Server) updateHill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hill, err := s.store.UpdateHill(r.Context(), r.PathValue("slug"), body.Title, body.IsPublic)
+	hill, err := s.store.UpdateHill(r.Context(), r.PathValue("slug"), ownerID(r), body.Title, body.IsPublic)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "hill not found")
 		return
@@ -172,6 +139,10 @@ func (s *Server) createScope(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "could not load hill")
 		return
 	}
+	if hill.OwnerID != ownerID(r) {
+		writeError(w, http.StatusNotFound, "hill not found")
+		return
+	}
 
 	scope, err := s.store.CreateScope(r.Context(), hill.ID, body.Title, body.Description, body.Color, body.SortOrder)
 	if err != nil {
@@ -183,7 +154,7 @@ func (s *Server) createScope(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) scopeSnapshots(w http.ResponseWriter, r *http.Request) {
-	snapshots, err := s.store.SnapshotsForScope(r.Context(), r.PathValue("id"))
+	snapshots, err := s.store.SnapshotsForScope(r.Context(), r.PathValue("id"), ownerID(r))
 	if err != nil {
 		s.log.Error("list snapshots", "err", err)
 		writeError(w, http.StatusInternalServerError, "could not load snapshots")
@@ -208,7 +179,7 @@ func (s *Server) updateScope(w http.ResponseWriter, r *http.Request) {
 		body.Color = "#2F4C64"
 	}
 
-	err := s.store.UpdateScope(r.Context(), r.PathValue("id"), body.Title, body.Color)
+	err := s.store.UpdateScope(r.Context(), r.PathValue("id"), body.Title, body.Color, ownerID(r))
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "scope not found")
 		return
@@ -222,7 +193,7 @@ func (s *Server) updateScope(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteScope(w http.ResponseWriter, r *http.Request) {
-	err := s.store.ArchiveScope(r.Context(), r.PathValue("id"))
+	err := s.store.ArchiveScope(r.Context(), r.PathValue("id"), ownerID(r))
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "scope not found")
 		return
@@ -239,7 +210,6 @@ func (s *Server) moveScope(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Position *int16 `json:"position"`
 		Note     string `json:"note"`
-		MovedBy  string `json:"moved_by"`
 	}
 	if !decode(w, r, &body) {
 		return
@@ -253,7 +223,7 @@ func (s *Server) moveScope(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := s.store.MoveScope(r.Context(), r.PathValue("id"), *body.Position, body.Note, body.MovedBy)
+	err := s.store.MoveScope(r.Context(), r.PathValue("id"), *body.Position, body.Note, ownerID(r))
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "scope not found")
 		return

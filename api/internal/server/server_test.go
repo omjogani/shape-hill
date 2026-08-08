@@ -15,7 +15,7 @@ import (
 	"github.com/omjogani/shape-hill/internal/store"
 )
 
-func testServer(t *testing.T) (*httptest.Server, *store.Store, store.User) {
+func testServer(t *testing.T) (*httptest.Server, *store.Store, store.User, string) {
 	t.Helper()
 
 	url := "postgres://postgres:postgres@localhost:5432/shapehill?sslmode=disable"
@@ -29,41 +29,19 @@ func testServer(t *testing.T) (*httptest.Server, *store.Store, store.User) {
 	srv := httptest.NewServer(New(db, quiet, fakeVerify))
 	t.Cleanup(srv.Close)
 
+	token := newAuthID(t)
 	unique := strconv.FormatInt(time.Now().UnixNano(), 36)
-	user, err := db.CreateUser(context.Background(), "srv-"+unique+"@example.com", "srv-"+unique, "Server Test")
+	user, err := db.OnboardUser(context.Background(), token, token+"@example.com", "srv"+unique, "Server Test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.DeleteUser(context.Background(), user.ID) })
 
-	return srv, db, user
+	return srv, db, user, token
 }
 
-func post(t *testing.T, url string, body any) (*http.Response, map[string]any) {
+func patchWithToken(t *testing.T, url, token string, body any) *http.Response {
 	t.Helper()
-
-	payload, err := json.Marshal(body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp, err := http.Post(url, "application/json", strings.NewReader(string(payload)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { resp.Body.Close() })
-
-	var decoded map[string]any
-	if resp.StatusCode != http.StatusNoContent {
-		if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
-			t.Fatalf("decode response from %s: %v", url, err)
-		}
-	}
-	return resp, decoded
-}
-
-func patch(t *testing.T, url string, body any) *http.Response {
-	t.Helper()
-
 	payload, err := json.Marshal(body)
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +51,7 @@ func patch(t *testing.T, url string, body any) *http.Response {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +61,7 @@ func patch(t *testing.T, url string, body any) *http.Response {
 }
 
 func TestHealth(t *testing.T) {
-	srv, _, _ := testServer(t)
+	srv, _, _, _ := testServer(t)
 
 	resp, err := http.Get(srv.URL + "/healthz")
 	if err != nil {
@@ -96,14 +75,14 @@ func TestHealth(t *testing.T) {
 }
 
 func TestEmbedServesSVGAndHonoursETag(t *testing.T) {
-	srv, _, user := testServer(t)
+	srv, _, _, token := testServer(t)
 
-	_, hill := post(t, srv.URL+"/api/hills", map[string]any{
-		"owner_id": user.ID, "slug": "billing-v2", "title": "Billing v2", "is_public": true,
+	_, hill := postWithToken(t, srv.URL+"/api/hills", token, map[string]any{
+		"slug": "billing-v2", "title": "Billing v2", "is_public": true,
 	})
 	slug := hill["Slug"].(string)
 
-	_, scope := post(t, srv.URL+"/api/hills/"+slug+"/scopes", map[string]any{
+	_, scope := postWithToken(t, srv.URL+"/api/hills/"+slug+"/scopes", token, map[string]any{
 		"title": "Card on file", "color": "#2F4C64",
 	})
 	scopeID := scope["ID"].(string)
@@ -144,7 +123,7 @@ func TestEmbedServesSVGAndHonoursETag(t *testing.T) {
 	}
 
 	// Moving a dot must change the ETag, or the ticket never updates.
-	moved, _ := post(t, srv.URL+"/api/scopes/"+scopeID+"/positions", map[string]any{
+	moved, _ := postWithToken(t, srv.URL+"/api/scopes/"+scopeID+"/positions", token, map[string]any{
 		"position": 62, "note": "wiring the settings screen",
 	})
 	if moved.StatusCode != http.StatusNoContent {
@@ -167,10 +146,10 @@ func TestEmbedServesSVGAndHonoursETag(t *testing.T) {
 }
 
 func TestEmbedHidesPrivateHills(t *testing.T) {
-	srv, _, user := testServer(t)
+	srv, _, _, token := testServer(t)
 
-	_, hill := post(t, srv.URL+"/api/hills", map[string]any{
-		"owner_id": user.ID, "slug": "secret-roadmap", "title": "Secret roadmap", "is_public": false,
+	_, hill := postWithToken(t, srv.URL+"/api/hills", token, map[string]any{
+		"slug": "secret-roadmap", "title": "Secret roadmap", "is_public": false,
 	})
 	slug := hill["Slug"].(string)
 
@@ -193,14 +172,14 @@ func TestEmbedHidesPrivateHills(t *testing.T) {
 }
 
 func TestEmbedTogglesWithVisibility(t *testing.T) {
-	srv, _, user := testServer(t)
+	srv, _, _, token := testServer(t)
 
-	_, hill := post(t, srv.URL+"/api/hills", map[string]any{
-		"owner_id": user.ID, "slug": "billing-v2", "title": "Billing v2", "is_public": false,
+	_, hill := postWithToken(t, srv.URL+"/api/hills", token, map[string]any{
+		"slug": "billing-v2", "title": "Billing v2", "is_public": false,
 	})
 	slug := hill["Slug"].(string)
 
-	patch(t, srv.URL+"/api/hills/"+slug, map[string]any{"is_public": true})
+	patchWithToken(t, srv.URL+"/api/hills/"+slug, token, map[string]any{"is_public": true})
 
 	resp, err := http.Get(srv.URL + "/hill/" + slug + ".svg")
 	if err != nil {
@@ -214,7 +193,7 @@ func TestEmbedTogglesWithVisibility(t *testing.T) {
 }
 
 func TestEmbedUnknownSlug(t *testing.T) {
-	srv, _, _ := testServer(t)
+	srv, _, _, _ := testServer(t)
 
 	resp, err := http.Get(srv.URL + "/hill/nosuchhill.svg")
 	if err != nil {
@@ -228,24 +207,70 @@ func TestEmbedUnknownSlug(t *testing.T) {
 }
 
 func TestMoveScopeRejectsPositionOutOfRange(t *testing.T) {
-	srv, _, user := testServer(t)
+	srv, _, _, token := testServer(t)
 
-	_, hill := post(t, srv.URL+"/api/hills", map[string]any{
-		"owner_id": user.ID, "slug": "billing-v2", "title": "Billing v2", "is_public": true,
+	_, hill := postWithToken(t, srv.URL+"/api/hills", token, map[string]any{
+		"slug": "billing-v2", "title": "Billing v2", "is_public": true,
 	})
-	_, scope := post(t, srv.URL+"/api/hills/"+hill["Slug"].(string)+"/scopes", map[string]any{"title": "Refunds"})
+	_, scope := postWithToken(t, srv.URL+"/api/hills/"+hill["Slug"].(string)+"/scopes", token, map[string]any{"title": "Refunds"})
 
-	resp, _ := post(t, srv.URL+"/api/scopes/"+scope["ID"].(string)+"/positions", map[string]any{"position": 140})
+	resp, _ := postWithToken(t, srv.URL+"/api/scopes/"+scope["ID"].(string)+"/positions", token, map[string]any{"position": 140})
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("position 140 = %d, want 400", resp.StatusCode)
 	}
 }
 
 func TestCreateHillRequiresTitle(t *testing.T) {
-	srv, _, user := testServer(t)
+	srv, _, _, token := testServer(t)
 
-	resp, _ := post(t, srv.URL+"/api/hills", map[string]any{"owner_id": user.ID})
+	resp, _ := postWithToken(t, srv.URL+"/api/hills", token, map[string]any{"slug": "no-title"})
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("hill without a title = %d, want 400", resp.StatusCode)
+	}
+}
+
+// TestHillsAreOwnerScoped is the point of the whole feature: one user cannot see
+// or touch another's hills or their scopes.
+func TestHillsAreOwnerScoped(t *testing.T) {
+	srv, db, _, ownerTok := testServer(t)
+
+	intruderTok := newAuthID(t)
+	intruder, err := db.OnboardUser(context.Background(), intruderTok, intruderTok+"@example.com", "intruder"+shortID(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.DeleteUser(context.Background(), intruder.ID) })
+
+	slug := "owned-" + shortID()
+	postWithToken(t, srv.URL+"/api/hills", ownerTok, map[string]any{"slug": slug, "title": "Owned", "is_public": false})
+	_, scope := postWithToken(t, srv.URL+"/api/hills/"+slug+"/scopes", ownerTok, map[string]any{"title": "Secret scope"})
+	scopeID := scope["ID"].(string)
+
+	if resp := getWithToken(t, srv.URL+"/api/hills/"+slug, intruderTok); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("intruder GET hill = %d, want 404", resp.StatusCode)
+	}
+	if resp := patchWithToken(t, srv.URL+"/api/hills/"+slug, intruderTok, map[string]any{"title": "Hijacked"}); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("intruder PATCH hill = %d, want 404", resp.StatusCode)
+	}
+	if resp, _ := postWithToken(t, srv.URL+"/api/scopes/"+scopeID+"/positions", intruderTok, map[string]any{"position": 50}); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("intruder move scope = %d, want 404", resp.StatusCode)
+	}
+
+	listResp := getWithToken(t, srv.URL+"/api/hills", intruderTok)
+	var hills []map[string]any
+	_ = json.NewDecoder(listResp.Body).Decode(&hills)
+	for _, h := range hills {
+		if h["Slug"] == slug {
+			t.Fatal("intruder's hill list must not include another user's hill")
+		}
+	}
+}
+
+// TestApiRequiresOnboardedCaller: a valid token with no account gets 403, not data.
+func TestApiRequiresOnboardedCaller(t *testing.T) {
+	srv, _, _, _ := testServer(t)
+
+	if resp := getWithToken(t, srv.URL+"/api/hills", newAuthID(t)); resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("un-onboarded caller = %d, want 403", resp.StatusCode)
 	}
 }

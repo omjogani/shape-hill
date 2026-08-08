@@ -31,22 +31,6 @@ func (s *Store) DeleteUser(ctx context.Context, id string) error {
 	return nil
 }
 
-// FirstUser is the earliest-created user — the owner stand-in until there's auth.
-func (s *Store) FirstUser(ctx context.Context) (User, error) {
-	var user User
-	err := s.pool.QueryRow(ctx, `
-		SELECT id::text, email, username, coalesce(name, '')
-		FROM users ORDER BY created_at LIMIT 1
-	`).Scan(&user.ID, &user.Email, &user.Username, &user.Name)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrNotFound
-	}
-	if err != nil {
-		return User{}, fmt.Errorf("first user: %w", err)
-	}
-	return user, nil
-}
-
 func (s *Store) UserByAuthID(ctx context.Context, authUserID string) (User, error) {
 	var user User
 	err := s.pool.QueryRow(ctx, `
@@ -58,6 +42,43 @@ func (s *Store) UserByAuthID(ctx context.Context, authUserID string) (User, erro
 	}
 	if err != nil {
 		return User{}, fmt.Errorf("user by auth id: %w", err)
+	}
+	return user, nil
+}
+
+// OnboardUser ties the caller's Supabase identity to a local account: it adopts
+// an existing row with the same email (link-by-email), otherwise creates one.
+// The email must come from the verified token — it is the linking key.
+func (s *Store) OnboardUser(ctx context.Context, authUserID, email, username, name string) (User, error) {
+	var user User
+	err := s.pool.QueryRow(ctx, `
+		WITH linked AS (
+			UPDATE users SET auth_user_id = $1::uuid
+			WHERE lower(email) = lower($2) AND auth_user_id IS NULL
+			RETURNING id, email, username, name
+		),
+		created AS (
+			INSERT INTO users (auth_user_id, email, username, name)
+			SELECT $1::uuid, $2, $3, NULLIF($4, '')
+			WHERE NOT EXISTS (SELECT 1 FROM linked)
+			RETURNING id, email, username, name
+		)
+		SELECT id::text, email, username, coalesce(name, '') FROM linked
+		UNION ALL
+		SELECT id::text, email, username, coalesce(name, '') FROM created
+	`, authUserID, email, username, name).Scan(&user.ID, &user.Email, &user.Username, &user.Name)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		switch pgErr.ConstraintName {
+		case "users_username_key":
+			return User{}, ErrUsernameTaken
+		case "users_email_key":
+			return User{}, ErrEmailTaken
+		}
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("onboard user: %w", err)
 	}
 	return user, nil
 }
@@ -80,12 +101,13 @@ func (s *Store) CreateHill(ctx context.Context, ownerID, slug, title, descriptio
 	return hill, nil
 }
 
-func (s *Store) ListHills(ctx context.Context) ([]Hill, error) {
+func (s *Store) ListHillsByOwner(ctx context.Context, ownerID string) ([]Hill, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, created_at, updated_at
 		FROM hills
+		WHERE owner_id = $1::uuid
 		ORDER BY updated_at DESC
-	`)
+	`, ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("list hills: %w", err)
 	}
@@ -121,16 +143,16 @@ func (s *Store) HillBySlug(ctx context.Context, slug string) (Hill, error) {
 	return hill, nil
 }
 
-func (s *Store) UpdateHill(ctx context.Context, slug string, title *string, isPublic *bool) (Hill, error) {
+func (s *Store) UpdateHill(ctx context.Context, slug, ownerID string, title *string, isPublic *bool) (Hill, error) {
 	var hill Hill
 	err := s.pool.QueryRow(ctx, `
 		UPDATE hills
-		SET title = coalesce($2, title),
-		    is_public = coalesce($3, is_public),
+		SET title = coalesce($3, title),
+		    is_public = coalesce($4, is_public),
 		    updated_at = now()
-		WHERE slug = $1
+		WHERE slug = $1 AND owner_id = $2::uuid
 		RETURNING id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, created_at, updated_at
-	`, slug, title, isPublic).Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
+	`, slug, ownerID, title, isPublic).Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
 		&hill.IsPublic, &hill.CreatedAt, &hill.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Hill{}, ErrNotFound
@@ -154,13 +176,15 @@ func (s *Store) CreateScope(ctx context.Context, hillID, title, description, col
 	return scope, nil
 }
 
-func (s *Store) SnapshotsForScope(ctx context.Context, scopeID string) ([]Snapshot, error) {
+func (s *Store) SnapshotsForScope(ctx context.Context, scopeID, ownerID string) ([]Snapshot, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT position, coalesce(note, ''), created_at
-		FROM scope_positions
-		WHERE scope_id = $1::uuid
-		ORDER BY created_at DESC
-	`, scopeID)
+		SELECT sp.position, coalesce(sp.note, ''), sp.created_at
+		FROM scope_positions sp
+		JOIN scopes s ON s.id = sp.scope_id
+		JOIN hills h ON h.id = s.hill_id
+		WHERE sp.scope_id = $1::uuid AND h.owner_id = $2::uuid
+		ORDER BY sp.created_at DESC
+	`, scopeID, ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("list snapshots: %w", err)
 	}
@@ -178,11 +202,12 @@ func (s *Store) SnapshotsForScope(ctx context.Context, scopeID string) ([]Snapsh
 	return snapshots, rows.Err()
 }
 
-func (s *Store) UpdateScope(ctx context.Context, scopeID, title, color string) error {
+func (s *Store) UpdateScope(ctx context.Context, scopeID, title, color, ownerID string) error {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE scopes SET title = $2, color = $3
 		WHERE id = $1::uuid AND archived_at IS NULL
-	`, scopeID, title, color)
+		  AND hill_id IN (SELECT id FROM hills WHERE owner_id = $4::uuid)
+	`, scopeID, title, color, ownerID)
 	if err != nil {
 		return fmt.Errorf("update scope: %w", err)
 	}
@@ -192,11 +217,12 @@ func (s *Store) UpdateScope(ctx context.Context, scopeID, title, color string) e
 	return nil
 }
 
-func (s *Store) ArchiveScope(ctx context.Context, scopeID string) error {
+func (s *Store) ArchiveScope(ctx context.Context, scopeID, ownerID string) error {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE scopes SET archived_at = now()
 		WHERE id = $1::uuid AND archived_at IS NULL
-	`, scopeID)
+		  AND hill_id IN (SELECT id FROM hills WHERE owner_id = $2::uuid)
+	`, scopeID, ownerID)
 	if err != nil {
 		return fmt.Errorf("archive scope: %w", err)
 	}
@@ -241,19 +267,16 @@ func (s *Store) ScopesForHill(ctx context.Context, hillID string) ([]Scope, erro
 	return scopes, rows.Err()
 }
 
-// MoveScope appends a position. It never updates one: the rows left behind are
-// the dot's trail, and the newest row is where it sits now.
-func (s *Store) MoveScope(ctx context.Context, scopeID string, position int16, note, movedBy string) error {
-	var mover any
-	if movedBy != "" {
-		mover = movedBy
-	}
-
+// MoveScope appends a position for a scope on a hill the owner owns. It never
+// updates a row: the rows left behind are the dot's trail, and the newest row is
+// where it sits now. moved_by is the owner.
+func (s *Store) MoveScope(ctx context.Context, scopeID string, position int16, note, ownerID string) error {
 	tag, err := s.pool.Exec(ctx, `
 		INSERT INTO scope_positions (scope_id, position, note, moved_by)
-		SELECT $1::uuid, $2, $3, $4::uuid
-		WHERE EXISTS (SELECT 1 FROM scopes WHERE id = $1::uuid)
-	`, scopeID, position, note, mover)
+		SELECT s.id, $2, $3, $4::uuid
+		FROM scopes s JOIN hills h ON h.id = s.hill_id
+		WHERE s.id = $1::uuid AND h.owner_id = $4::uuid
+	`, scopeID, position, note, ownerID)
 	if err != nil {
 		return fmt.Errorf("move scope: %w", err)
 	}

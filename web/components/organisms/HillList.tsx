@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useHills } from "@/lib/hooks";
+import { supabase } from "@/lib/supabase";
 import { NewHillDialog } from "../molecules/NewHillDialog";
+import { Button } from "../atoms/Button";
 
 export function HillList() {
   const { data: hills, isLoading, isError, error } = useHills();
@@ -14,7 +16,12 @@ export function HillList() {
           <p className="font-mono text-xs uppercase tracking-widest text-sage">shapehill</p>
           <h1 className="font-display text-3xl">Hill charts</h1>
         </div>
-        <NewHillDialog />
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={() => supabase.auth.signOut()}>
+            Sign out
+          </Button>
+          <NewHillDialog />
+        </div>
       </header>
 
       {isLoading && <p className="text-sm text-sage">Loading charts…</p>}

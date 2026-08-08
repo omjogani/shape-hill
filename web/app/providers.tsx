@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { AuthGate } from "@/components/AuthGate";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // One client per browser session, kept out of module scope so it isn't shared
@@ -13,5 +14,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }),
   );
 
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <AuthGate>{children}</AuthGate>
+    </QueryClientProvider>
+  );
 }

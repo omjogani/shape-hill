@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/MicahParks/keyfunc/v3"
@@ -61,9 +62,24 @@ func (s *Server) authenticate(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (s *Server) authed(next http.HandlerFunc) http.HandlerFunc {
+	return s.authenticate(func(w http.ResponseWriter, r *http.Request) {
+		if c, _ := callerFrom(r.Context()); c.Account == nil {
+			writeError(w, http.StatusForbidden, "complete onboarding first")
+			return
+		}
+		next(w, r)
+	})
+}
+
 func callerFrom(ctx context.Context) (caller, bool) {
 	c, ok := ctx.Value(callerKey).(caller)
 	return c, ok
+}
+
+func ownerID(r *http.Request) string {
+	c, _ := callerFrom(r.Context())
+	return c.Account.ID
 }
 
 func bearer(r *http.Request) (string, bool) {
@@ -81,6 +97,49 @@ func (s *Server) currentUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"onboarded": true, "user": c.Account})
+}
+
+// Usernames are lowercase handles: a letter or digit, then 2–29 more of letter,
+// digit, underscore or hyphen.
+var usernamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{2,29}$`)
+
+func (s *Server) onboard(w http.ResponseWriter, r *http.Request) {
+	c, _ := callerFrom(r.Context())
+	if c.Account != nil {
+		writeError(w, http.StatusConflict, "already onboarded")
+		return
+	}
+
+	var body struct {
+		Username string `json:"username"`
+		Name     string `json:"name"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+
+	username := strings.ToLower(strings.TrimSpace(body.Username))
+	if !usernamePattern.MatchString(username) {
+		writeError(w, http.StatusBadRequest, "username must be 3–30 chars: lowercase letters, numbers, _ or -")
+		return
+	}
+
+	// Email comes from the verified token, never the body: it is what links a
+	// returning person to an account already registered under that address.
+	user, err := s.store.OnboardUser(r.Context(), c.ID, c.Email, username, strings.TrimSpace(body.Name))
+	switch {
+	case errors.Is(err, store.ErrUsernameTaken):
+		writeError(w, http.StatusConflict, "that username is taken")
+		return
+	case errors.Is(err, store.ErrEmailTaken):
+		writeError(w, http.StatusConflict, "an account already exists for this email")
+		return
+	case err != nil:
+		s.log.Error("onboard user", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not create account")
+		return
+	}
+	writeJSON(w, http.StatusCreated, user)
 }
 
 // NewSupabaseVerifier verifies access tokens against the project's public JWKS.

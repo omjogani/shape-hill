@@ -11,6 +11,8 @@ import (
 
 var ErrNotFound = errors.New("not found")
 var ErrSlugTaken = errors.New("slug already taken")
+var ErrUsernameTaken = errors.New("username already taken")
+var ErrEmailTaken = errors.New("email already registered")
 
 type Store struct {
 	pool *pgxpool.Pool
