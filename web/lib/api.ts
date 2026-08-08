@@ -1,4 +1,15 @@
+import { supabase } from "./supabase";
+
 // The API marshals Go structs with no json tags, so response keys are PascalCase.
+export type User = {
+  ID: string;
+  Email: string;
+  Username: string;
+  Name: string;
+};
+
+export type Me = { onboarded: false; email: string } | { onboarded: true; user: User };
+
 export type Hill = {
   ID: string;
   OwnerID: string;
@@ -39,10 +50,17 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(init?.headers as Record<string, string>),
+  };
+  if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+
+  const res = await fetch(path, { ...init, headers });
 
   if (!res.ok) {
     const raw = await res.text().catch(() => "");
@@ -61,6 +79,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  me: () => request<Me>(`/api/me`),
+
+  onboard: (username: string, name?: string) =>
+    request<User>(`/api/onboard`, {
+      method: "POST",
+      body: JSON.stringify({ username, name }),
+    }),
+
   listHills: () => request<Hill[]>(`/api/hills`),
 
   createHill: (title: string, slug: string) =>
