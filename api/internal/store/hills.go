@@ -202,6 +202,31 @@ func (s *Store) SnapshotsForScope(ctx context.Context, scopeID, ownerID string) 
 	return snapshots, rows.Err()
 }
 
+func (s *Store) SnapshotsForPublicScope(ctx context.Context, scopeID string) ([]Snapshot, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT sp.position, coalesce(sp.note, ''), sp.created_at
+		FROM scope_positions sp
+		JOIN scopes s ON s.id = sp.scope_id
+		JOIN hills h ON h.id = s.hill_id
+		WHERE sp.scope_id = $1::uuid AND h.is_public = true
+		ORDER BY sp.created_at DESC
+	`, scopeID)
+	if err != nil {
+		return nil, fmt.Errorf("list public snapshots: %w", err)
+	}
+	defer rows.Close()
+
+	snapshots := []Snapshot{}
+	for rows.Next() {
+		var snap Snapshot
+		if err := rows.Scan(&snap.Position, &snap.Note, &snap.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan public snapshot: %w", err)
+		}
+		snapshots = append(snapshots, snap)
+	}
+	return snapshots, rows.Err()
+}
+
 func (s *Store) UpdateScope(ctx context.Context, scopeID, title, color, ownerID string) error {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE scopes SET title = $2, color = $3

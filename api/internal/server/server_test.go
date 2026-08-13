@@ -206,6 +206,90 @@ func TestEmbedUnknownSlug(t *testing.T) {
 	}
 }
 
+func TestPublicHillServesPublicChart(t *testing.T) {
+	srv, _, _, token := testServer(t)
+
+	_, hill := postWithToken(t, srv.URL+"/api/hills", token, map[string]any{
+		"slug": "billing-v2", "title": "Billing v2", "is_public": true,
+	})
+	slug := hill["Slug"].(string)
+
+	_, scope := postWithToken(t, srv.URL+"/api/hills/"+slug+"/scopes", token, map[string]any{
+		"title": "Card on file", "color": "#2F4C64",
+	})
+	scopeID := scope["ID"].(string)
+	postWithToken(t, srv.URL+"/api/scopes/"+scopeID+"/positions", token, map[string]any{
+		"position": 40, "note": "wiring it up",
+	})
+
+	resp := getWithToken(t, srv.URL+"/api/public/hills/"+slug, "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("public hill = %d, want 200", resp.StatusCode)
+	}
+	var body struct {
+		Hill   map[string]any
+		Scopes []map[string]any
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Hill["Title"] != "Billing v2" {
+		t.Fatalf("public hill title = %v, want Billing v2", body.Hill["Title"])
+	}
+	if len(body.Scopes) != 1 || body.Scopes[0]["Title"] != "Card on file" {
+		t.Fatalf("public hill scopes = %v, want one scope named Card on file", body.Scopes)
+	}
+
+	snaps := getWithToken(t, srv.URL+"/api/public/scopes/"+scopeID+"/positions", "")
+	if snaps.StatusCode != http.StatusOK {
+		t.Fatalf("public snapshots = %d, want 200", snaps.StatusCode)
+	}
+	var snapshots []map[string]any
+	if err := json.NewDecoder(snaps.Body).Decode(&snapshots); err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshots) != 1 || snapshots[0]["Note"] != "wiring it up" {
+		t.Fatalf("public snapshots = %v, want one snapshot noting wiring it up", snapshots)
+	}
+}
+
+func TestPublicHillHidesPrivate(t *testing.T) {
+	srv, _, _, token := testServer(t)
+
+	_, hill := postWithToken(t, srv.URL+"/api/hills", token, map[string]any{
+		"slug": "secret-roadmap", "title": "Secret roadmap", "is_public": false,
+	})
+	slug := hill["Slug"].(string)
+	_, scope := postWithToken(t, srv.URL+"/api/hills/"+slug+"/scopes", token, map[string]any{"title": "Secret scope"})
+	scopeID := scope["ID"].(string)
+	postWithToken(t, srv.URL+"/api/scopes/"+scopeID+"/positions", token, map[string]any{
+		"position": 30, "note": "should stay hidden",
+	})
+
+	if resp := getWithToken(t, srv.URL+"/api/public/hills/"+slug, ""); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("public GET of private hill = %d, want 404", resp.StatusCode)
+	}
+
+	snaps := getWithToken(t, srv.URL+"/api/public/scopes/"+scopeID+"/positions", "")
+	if snaps.StatusCode != http.StatusOK {
+		t.Fatalf("public snapshots for private hill = %d, want 200 with an empty list", snaps.StatusCode)
+	}
+	var snapshots []map[string]any
+	_ = json.NewDecoder(snaps.Body).Decode(&snapshots)
+	if len(snapshots) != 0 {
+		t.Fatalf("public snapshots for a private hill = %v, want none", snapshots)
+	}
+}
+
+func TestPublicHillUnknownSlug(t *testing.T) {
+	srv, _, _, _ := testServer(t)
+
+	resp := getWithToken(t, srv.URL+"/api/public/hills/nosuchhill", "")
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("public GET of unknown slug = %d, want 404", resp.StatusCode)
+	}
+}
+
 func TestMoveScopeRejectsPositionOutOfRange(t *testing.T) {
 	srv, _, _, token := testServer(t)
 

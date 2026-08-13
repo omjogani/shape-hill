@@ -7,6 +7,7 @@ export function Dot({
   position,
   selected,
   dragging,
+  readOnly = false,
   onPointerDown,
   onKeyDown,
 }: {
@@ -15,20 +16,21 @@ export function Dot({
   position: number;
   selected: boolean;
   dragging: boolean;
+  readOnly?: boolean;
   onPointerDown: (e: React.PointerEvent) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
 }) {
   return (
     <g
       transform={`translate(${x(position)} ${y(position)})`}
-      className={`hill-dot ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+      className={`hill-dot ${readOnly ? "cursor-pointer" : dragging ? "cursor-grabbing" : "cursor-grab"}`}
       tabIndex={0}
-      role="slider"
-      aria-label={`${dot.label} position`}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={position}
-      aria-valuetext={`${position} percent`}
+      role={readOnly ? "button" : "slider"}
+      aria-label={readOnly ? `${dot.label} — ${position} percent` : `${dot.label} position`}
+      aria-valuemin={readOnly ? undefined : 0}
+      aria-valuemax={readOnly ? undefined : 100}
+      aria-valuenow={readOnly ? undefined : position}
+      aria-valuetext={readOnly ? undefined : `${position} percent`}
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
     >

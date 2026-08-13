@@ -97,6 +97,11 @@ export const api = {
 
   getHill: (slug: string) => request<HillResponse>(`/api/hills/${slug}`),
 
+  getPublicHill: (slug: string) => request<HillResponse>(`/api/public/hills/${slug}`),
+
+  publicScopeSnapshots: (scopeId: string) =>
+    request<Snapshot[]>(`/api/public/scopes/${scopeId}/positions`),
+
   updateTitle: (slug: string, title: string) =>
     request<Hill>(`/api/hills/${slug}`, {
       method: "PATCH",
