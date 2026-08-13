@@ -18,6 +18,18 @@ export function useHill(slug: string) {
   return useQuery({ queryKey: key(slug), queryFn: () => api.getHill(slug) });
 }
 
+export function usePublicHill(slug: string) {
+  return useQuery({ queryKey: ["public-hill", slug], queryFn: () => api.getPublicHill(slug) });
+}
+
+export function usePublicScopeSnapshots(scopeId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["public-snapshots", scopeId],
+    queryFn: () => api.publicScopeSnapshots(scopeId),
+    enabled,
+  });
+}
+
 export function useCreateHill() {
   const qc = useQueryClient();
   return useMutation({

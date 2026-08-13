@@ -13,14 +13,20 @@ export function HillChart({
   onStage,
   selectedId,
   onSelect,
+  readOnly = false,
 }: {
   dots: ChartDot[];
-  /** Records a move locally; nothing is persisted until the user saves. */
-  onStage: (id: string, position: number) => void;
+  /** Records a move locally; nothing is persisted until the user saves. Unused in readOnly mode. */
+  onStage?: (id: string, position: number) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  readOnly?: boolean;
 }) {
-  const { svgRef, drag, start, move, end, onKey, posOf } = useDotDrag(dots, onStage, onSelect);
+  const { svgRef, drag, start, move, end, onKey, posOf } = useDotDrag(
+    dots,
+    onStage ?? (() => {}),
+    onSelect,
+  );
 
   const dotFor = (dot: ChartDot, i: number) => (
     <Dot
@@ -29,9 +35,25 @@ export function HillChart({
       index={i}
       position={posOf(dot)}
       selected={dot.id === selectedId}
-      dragging={drag?.id === dot.id}
-      onPointerDown={(e) => start(e, dot)}
-      onKeyDown={(e) => onKey(e, dot)}
+      dragging={!readOnly && drag?.id === dot.id}
+      readOnly={readOnly}
+      onPointerDown={
+        readOnly
+          ? (e) => {
+              e.preventDefault();
+              onSelect(dot.id);
+            }
+          : (e) => start(e, dot)
+      }
+      onKeyDown={
+        readOnly
+          ? (e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              onSelect(dot.id);
+            }
+          : (e) => onKey(e, dot)
+      }
     />
   );
 
@@ -40,11 +62,15 @@ export function HillChart({
       ref={svgRef}
       viewBox={`0 0 ${WIDTH} ${CHART_HEIGHT}`}
       className="w-full touch-none select-none"
-      onPointerMove={move}
-      onPointerUp={end}
-      onPointerCancel={end}
+      onPointerMove={readOnly ? undefined : move}
+      onPointerUp={readOnly ? undefined : end}
+      onPointerCancel={readOnly ? undefined : end}
       role="group"
-      aria-label="Hill chart — click a dot to open it, drag or use arrow keys to move it"
+      aria-label={
+        readOnly
+          ? "Hill chart — click a dot to see its details"
+          : "Hill chart — click a dot to open it, drag or use arrow keys to move it"
+      }
     >
       <HillScenery />
 

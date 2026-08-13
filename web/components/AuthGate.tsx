@@ -7,6 +7,9 @@ import { useMe, useSession } from "@/lib/auth";
 
 const CALLBACK = "/auth/callback";
 
+const isPublicViewPath = (pathname: string) => /^\/[^/]+\/view$/.test(pathname);
+const isPublicPath = (pathname: string) => pathname === CALLBACK || isPublicViewPath(pathname);
+
 function Full({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex flex-1 items-center justify-center text-sm text-sage">{children}</main>
@@ -36,7 +39,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }, [userId, qc]);
 
   useEffect(() => {
-    if (pathname === CALLBACK || session === undefined) return;
+    if (isPublicPath(pathname) || session === undefined) return;
 
     if (!session) {
       if (pathname !== "/login") router.replace("/login");
@@ -51,7 +54,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, session, me.isLoading, onboarded, router]);
 
-  if (pathname === CALLBACK) return <>{children}</>;
+  if (isPublicPath(pathname)) return <>{children}</>;
   if (session === undefined || (session && me.isLoading)) return <Full>Loading…</Full>;
 
   if (!session) return pathname === "/login" ? <>{children}</> : <Full>Redirecting…</Full>;

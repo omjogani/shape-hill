@@ -24,8 +24,9 @@ export function EmbedMenu({ slug, title }: { slug: string; title: string }) {
     else delete root.dataset.style;
   }, [style]);
 
-  const url = `${EMBED_BASE}/hill/${slug}.svg${style ? `?style=${style}` : ""}`;
-  const markdown = `![${title}](${url})`;
+  const imageUrl = `${EMBED_BASE}/hill/${slug}.svg${style ? `?style=${style}` : ""}`;
+  const viewUrl = `${window.location.origin}/${slug}/view`;
+  const markdown = `[![${title}](${imageUrl})](${viewUrl})`;
 
   const copy = async () => {
     try {
