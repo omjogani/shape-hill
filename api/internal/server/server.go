@@ -24,6 +24,8 @@ func New(st *store.Store, log *slog.Logger, verify VerifyToken) *Server {
 
 	server.mux.HandleFunc("GET /healthz", server.health)
 	server.mux.HandleFunc("GET /hill/{file}", server.embed)
+	server.mux.HandleFunc("GET /api/public/hills/{slug}", server.getPublicHill)
+	server.mux.HandleFunc("GET /api/public/scopes/{id}/positions", server.publicScopeSnapshots)
 	server.mux.HandleFunc("GET /api/me", server.authenticate(server.currentUser))
 	server.mux.HandleFunc("POST /api/onboard", server.authenticate(server.onboard))
 	server.mux.HandleFunc("GET /api/hills", server.authed(server.listHills))

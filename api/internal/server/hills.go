@@ -81,6 +81,32 @@ func (s *Server) getHill(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"hill": hill, "scopes": scopes})
 }
 
+func (s *Server) getPublicHill(w http.ResponseWriter, r *http.Request) {
+	hill, err := s.store.HillBySlug(r.Context(), r.PathValue("slug"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "hill not found")
+		return
+	}
+	if err != nil {
+		s.log.Error("get public hill", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not load hill")
+		return
+	}
+	if !hill.IsPublic {
+		writeError(w, http.StatusNotFound, "hill not found")
+		return
+	}
+
+	scopes, err := s.store.ScopesForHill(r.Context(), hill.ID)
+	if err != nil {
+		s.log.Error("list scopes for public hill", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not load scopes")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"hill": hill, "scopes": scopes})
+}
+
 func (s *Server) updateHill(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Title    *string `json:"title"`
@@ -157,6 +183,16 @@ func (s *Server) scopeSnapshots(w http.ResponseWriter, r *http.Request) {
 	snapshots, err := s.store.SnapshotsForScope(r.Context(), r.PathValue("id"), ownerID(r))
 	if err != nil {
 		s.log.Error("list snapshots", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not load snapshots")
+		return
+	}
+	writeJSON(w, http.StatusOK, snapshots)
+}
+
+func (s *Server) publicScopeSnapshots(w http.ResponseWriter, r *http.Request) {
+	snapshots, err := s.store.SnapshotsForPublicScope(r.Context(), r.PathValue("id"))
+	if err != nil {
+		s.log.Error("list public snapshots", "err", err)
 		writeError(w, http.StatusInternalServerError, "could not load snapshots")
 		return
 	}
