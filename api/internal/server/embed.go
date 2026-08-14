@@ -88,7 +88,7 @@ func chartOf(hill store.Hill, scopes []store.Scope, style hillchart.Style) hillc
 			Note:     scope.Note,
 			Color:    scope.Color,
 			Position: scope.Position,
-			Stalled:  time.Since(scope.MovedAt) > stalledAfter && scope.Position < 100,
+			Stalled:  hill.TrackStalled && time.Since(scope.MovedAt) > stalledAfter && scope.Position < 100,
 		})
 	}
 	return chart

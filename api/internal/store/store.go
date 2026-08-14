@@ -40,14 +40,15 @@ type User struct {
 }
 
 type Hill struct {
-	ID          string
-	OwnerID     string
-	Slug        string
-	Title       string
-	Description string
-	IsPublic    bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID           string
+	OwnerID      string
+	Slug         string
+	Title        string
+	Description  string
+	IsPublic     bool
+	TrackStalled bool
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // Scope carries its latest position, so rendering a hill needs one query for the

@@ -109,13 +109,14 @@ func (s *Server) getPublicHill(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) updateHill(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Title    *string `json:"title"`
-		IsPublic *bool   `json:"is_public"`
+		Title        *string `json:"title"`
+		IsPublic     *bool   `json:"is_public"`
+		TrackStalled *bool   `json:"track_stalled"`
 	}
 	if !decode(w, r, &body) {
 		return
 	}
-	if body.Title == nil && body.IsPublic == nil {
+	if body.Title == nil && body.IsPublic == nil && body.TrackStalled == nil {
 		writeError(w, http.StatusBadRequest, "nothing to update")
 		return
 	}
@@ -124,7 +125,7 @@ func (s *Server) updateHill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hill, err := s.store.UpdateHill(r.Context(), r.PathValue("slug"), ownerID(r), body.Title, body.IsPublic)
+	hill, err := s.store.UpdateHill(r.Context(), r.PathValue("slug"), ownerID(r), body.Title, body.IsPublic, body.TrackStalled)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "hill not found")
 		return

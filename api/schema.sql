@@ -23,6 +23,7 @@ CREATE TABLE hills (
   title       text NOT NULL,
   description text,
   is_public   boolean NOT NULL DEFAULT false,
+  track_stalled boolean NOT NULL DEFAULT true,
   starts_on   date,
   ends_on     date,
   created_at  timestamptz NOT NULL DEFAULT now(),

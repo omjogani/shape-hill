@@ -17,6 +17,7 @@ export type Hill = {
   Title: string;
   Description: string;
   IsPublic: boolean;
+  TrackStalled: boolean;
   CreatedAt: string;
   UpdatedAt: string;
 };
@@ -112,6 +113,12 @@ export const api = {
     request<Hill>(`/api/hills/${slug}`, {
       method: "PATCH",
       body: JSON.stringify({ is_public: isPublic }),
+    }),
+
+  setTrackStalled: (slug: string, trackStalled: boolean) =>
+    request<Hill>(`/api/hills/${slug}`, {
+      method: "PATCH",
+      body: JSON.stringify({ track_stalled: trackStalled }),
     }),
 
   addScope: (slug: string, input: { title: string; color: string; sort_order: number }) =>
