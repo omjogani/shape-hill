@@ -88,8 +88,8 @@ func (s *Store) CreateHill(ctx context.Context, ownerID, slug, title, descriptio
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO hills (owner_id, slug, title, description, is_public)
 		VALUES ($1::uuid, $2, $3, $4, $5)
-		RETURNING id::text, created_at, updated_at
-	`, ownerID, slug, title, description, isPublic).Scan(&hill.ID, &hill.CreatedAt, &hill.UpdatedAt)
+		RETURNING id::text, track_stalled, created_at, updated_at
+	`, ownerID, slug, title, description, isPublic).Scan(&hill.ID, &hill.TrackStalled, &hill.CreatedAt, &hill.UpdatedAt)
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -103,7 +103,7 @@ func (s *Store) CreateHill(ctx context.Context, ownerID, slug, title, descriptio
 
 func (s *Store) ListHillsByOwner(ctx context.Context, ownerID string) ([]Hill, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, created_at, updated_at
+		SELECT id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, track_stalled, created_at, updated_at
 		FROM hills
 		WHERE owner_id = $1::uuid
 		ORDER BY updated_at DESC
@@ -118,7 +118,7 @@ func (s *Store) ListHillsByOwner(ctx context.Context, ownerID string) ([]Hill, e
 	for rows.Next() {
 		var hill Hill
 		if err := rows.Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
-			&hill.IsPublic, &hill.CreatedAt, &hill.UpdatedAt); err != nil {
+			&hill.IsPublic, &hill.TrackStalled, &hill.CreatedAt, &hill.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan hill: %w", err)
 		}
 		hills = append(hills, hill)
@@ -129,11 +129,11 @@ func (s *Store) ListHillsByOwner(ctx context.Context, ownerID string) ([]Hill, e
 func (s *Store) HillBySlug(ctx context.Context, slug string) (Hill, error) {
 	var hill Hill
 	err := s.pool.QueryRow(ctx, `
-		SELECT id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, created_at, updated_at
+		SELECT id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, track_stalled, created_at, updated_at
 		FROM hills
 		WHERE slug = $1
 	`, slug).Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
-		&hill.IsPublic, &hill.CreatedAt, &hill.UpdatedAt)
+		&hill.IsPublic, &hill.TrackStalled, &hill.CreatedAt, &hill.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Hill{}, ErrNotFound
 	}
@@ -143,17 +143,18 @@ func (s *Store) HillBySlug(ctx context.Context, slug string) (Hill, error) {
 	return hill, nil
 }
 
-func (s *Store) UpdateHill(ctx context.Context, slug, ownerID string, title *string, isPublic *bool) (Hill, error) {
+func (s *Store) UpdateHill(ctx context.Context, slug, ownerID string, title *string, isPublic, trackStalled *bool) (Hill, error) {
 	var hill Hill
 	err := s.pool.QueryRow(ctx, `
 		UPDATE hills
 		SET title = coalesce($3, title),
 		    is_public = coalesce($4, is_public),
+		    track_stalled = coalesce($5, track_stalled),
 		    updated_at = now()
 		WHERE slug = $1 AND owner_id = $2::uuid
-		RETURNING id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, created_at, updated_at
-	`, slug, ownerID, title, isPublic).Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
-		&hill.IsPublic, &hill.CreatedAt, &hill.UpdatedAt)
+		RETURNING id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, track_stalled, created_at, updated_at
+	`, slug, ownerID, title, isPublic, trackStalled).Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
+		&hill.IsPublic, &hill.TrackStalled, &hill.CreatedAt, &hill.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Hill{}, ErrNotFound
 	}
