@@ -1,21 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { Scope } from "@/lib/api";
+import { stalledIn } from "@/lib/stalled";
 import { Button } from "../../atoms/Button";
 import { HillChart, type ChartDot } from "../hill-chart/HillChart";
 import { TitleForm } from "../../molecules/TitleForm";
 import { EmbedMenu } from "../../molecules/EmbedMenu";
 import { VisibilityToggle } from "../../molecules/VisibilityToggle";
+import { StallToggle } from "../../molecules/StallToggle";
 import { PendingChanges } from "../../molecules/PendingChanges";
 import { ScopeList } from "./ScopeList";
 import { useHillEditor } from "./useHillEditor";
-
-// Mirrors the server's stalledAfter: a scope untouched for a week (and not done).
-const STALLED_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
-
-const isStalled = (s: Scope) =>
-  Date.now() - new Date(s.MovedAt).getTime() > STALLED_AFTER_MS && s.Position < 100;
 
 export function HillEditor({ slug }: { slug: string }) {
   const router = useRouter();
@@ -39,6 +34,7 @@ export function HillEditor({ slug }: { slug: string }) {
   if (!data) return null;
 
   const { hill, scopes } = data;
+  const isStalled = stalledIn(hill);
   const dots: ChartDot[] = scopes.map((s) => ({
     id: s.ID,
     label: s.Title,
@@ -59,6 +55,7 @@ export function HillEditor({ slug }: { slug: string }) {
           <TitleForm slug={slug} title={hill.Title} />
         </div>
         <div className="flex items-center gap-4 pt-6">
+          <StallToggle slug={slug} trackStalled={hill.TrackStalled} />
           <VisibilityToggle slug={slug} isPublic={hill.IsPublic} />
           <EmbedMenu slug={slug} title={hill.Title} />
         </div>

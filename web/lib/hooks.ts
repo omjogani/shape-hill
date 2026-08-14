@@ -64,6 +64,15 @@ export function useSetVisibility(slug: string) {
   });
 }
 
+export function useSetTrackStalled(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (trackStalled: boolean) => api.setTrackStalled(slug, trackStalled),
+    onSuccess: (hill: Hill) =>
+      qc.setQueryData<HillResponse>(key(slug), (prev) => (prev ? { ...prev, hill } : prev)),
+  });
+}
+
 export function useAddScope(slug: string) {
   const qc = useQueryClient();
   return useMutation({

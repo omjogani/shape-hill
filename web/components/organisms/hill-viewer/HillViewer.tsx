@@ -2,15 +2,9 @@
 
 import { useState } from "react";
 import { usePublicHill } from "@/lib/hooks";
-import type { Scope } from "@/lib/api";
+import { stalledIn } from "@/lib/stalled";
 import { HillChart, type ChartDot } from "../hill-chart/HillChart";
 import { ScopeList } from "./ScopeList";
-
-// Mirrors the server's stalledAfter: a scope untouched for a week (and not done).
-const STALLED_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
-
-const isStalled = (s: Scope) =>
-  Date.now() - new Date(s.MovedAt).getTime() > STALLED_AFTER_MS && s.Position < 100;
 
 export function HillViewer({ slug }: { slug: string }) {
   const { data, isLoading, isError } = usePublicHill(slug);
@@ -33,6 +27,7 @@ export function HillViewer({ slug }: { slug: string }) {
   if (!data) return null;
 
   const { hill, scopes } = data;
+  const isStalled = stalledIn(hill);
   const dots: ChartDot[] = scopes.map((s) => ({
     id: s.ID,
     label: s.Title,
