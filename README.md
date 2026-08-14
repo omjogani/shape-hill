@@ -5,8 +5,10 @@ Hill charts for teams. Where the work is, not how much is left.
 [![Shape Hill Readme](https://shape-hill.onrender.com/hill/shape-hill-readme.svg?style=github)](https://shape-hill.vercel.app/shape-hill-readme/view)
 
 > [!TIP]
-> That chart is live. Paste one line into a README, a PR description, or a wiki
-> page, and it redraws itself every time someone moves a dot.
+> That chart is live - click it to see the full progress.
+
+Paste one line into a README, a PR description, or a wiki page, and it redraws
+itself every time someone moves a dot.
 
 ## The idea
 
