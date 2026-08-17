@@ -10,7 +10,7 @@ select cron.schedule(
   '*/14 * * * *',
   $$
   select net.http_get(
-    url := 'https://API-DOMAIN/api/healthz',
+    url := 'https://API-DOMAIN/healthz',
     timeout_milliseconds := 10000
   );
   $$
