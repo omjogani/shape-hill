@@ -12,10 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/omjogani/shape-hill/internal/account"
 	"github.com/omjogani/shape-hill/internal/store"
 )
 
-func testServer(t *testing.T) (*httptest.Server, *store.Store, store.User, string) {
+func testServer(t *testing.T) (*httptest.Server, *store.Store, account.User, string) {
 	t.Helper()
 
 	url := "postgres://postgres:postgres@localhost:5432/shapehill?sslmode=disable"

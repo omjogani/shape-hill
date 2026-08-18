@@ -6,6 +6,9 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/omjogani/shape-hill/internal/account"
+	"github.com/omjogani/shape-hill/internal/hills"
 )
 
 // testStore connects to the local database. Without one, the integration tests
@@ -24,7 +27,7 @@ func testStore(t *testing.T) *Store {
 
 // testUser creates a user and removes it afterwards, taking its hills, scopes and
 // positions with it through the cascade.
-func testUser(t *testing.T, st *Store) User {
+func testUser(t *testing.T, st *Store) account.User {
 	t.Helper()
 
 	unique := strconv.FormatInt(time.Now().UnixNano(), 36)
@@ -50,7 +53,7 @@ func TestCreateHillRejectsDuplicateSlug(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := st.CreateHill(ctx, user.ID, "billing-v2", "Billing v2 again", "", true); !errors.Is(err, ErrSlugTaken) {
+	if _, err := st.CreateHill(ctx, user.ID, "billing-v2", "Billing v2 again", "", true); !errors.Is(err, hills.ErrSlugTaken) {
 		t.Fatalf("want ErrSlugTaken for a duplicate slug, got %v", err)
 	}
 
@@ -92,7 +95,7 @@ func TestHillBySlugReportsNotFound(t *testing.T) {
 	st := testStore(t)
 
 	_, err := st.HillBySlug(context.Background(), "does-not-exist")
-	if !errors.Is(err, ErrNotFound) {
+	if !errors.Is(err, hills.ErrNotFound) {
 		t.Fatalf("want ErrNotFound for an unknown slug, got %v", err)
 	}
 }
@@ -169,22 +172,7 @@ func TestMoveUnknownScopeReportsNotFound(t *testing.T) {
 
 	zero := "00000000-0000-0000-0000-000000000000"
 	err := st.MoveScope(context.Background(), zero, 50, "", zero)
-	if !errors.Is(err, ErrNotFound) {
+	if !errors.Is(err, hills.ErrNotFound) {
 		t.Fatalf("want ErrNotFound moving a scope that does not exist, got %v", err)
-	}
-}
-
-func TestLastMovedOnTracksTheNewestMovement(t *testing.T) {
-	hill := Hill{UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
-	older := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
-	newest := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-
-	got := LastMovedOn(hill, []Scope{{MovedAt: older}, {MovedAt: newest}, {MovedAt: older}})
-	if !got.Equal(newest) {
-		t.Errorf("LastMovedOn = %v, want the newest movement %v", got, newest)
-	}
-
-	if got := LastMovedOn(hill, nil); !got.Equal(hill.UpdatedAt) {
-		t.Errorf("with no scopes it should fall back to the hill itself, got %v", got)
 	}
 }

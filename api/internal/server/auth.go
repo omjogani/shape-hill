@@ -5,24 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/omjogani/shape-hill/internal/store"
+
+	"github.com/omjogani/shape-hill/internal/account"
 )
 
-type AuthUser struct {
-	ID    string
-	Email string
-}
-
-type VerifyToken func(ctx context.Context, token string) (AuthUser, error)
-
 type caller struct {
-	AuthUser
-	Account *store.User
+	account.AuthUser
+	Account *account.User
 }
 
 type ctxKey int
@@ -47,7 +40,7 @@ func (s *Server) authenticate(next http.HandlerFunc) http.HandlerFunc {
 		c := caller{AuthUser: id}
 		user, err := s.store.UserByAuthID(r.Context(), id.ID)
 		switch {
-		case errors.Is(err, store.ErrNotFound):
+		case errors.Is(err, account.ErrNotFound):
 			// Authenticated but not onboarded — Account stays nil.
 		case err != nil:
 			s.log.Error("resolve user", "err", err)
@@ -99,10 +92,6 @@ func (s *Server) currentUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"onboarded": true, "user": c.Account})
 }
 
-// Usernames are lowercase handles: a letter or digit, then 2–29 more of letter,
-// digit, underscore or hyphen.
-var usernamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{2,29}$`)
-
 func (s *Server) onboard(w http.ResponseWriter, r *http.Request) {
 	c, _ := callerFrom(r.Context())
 	if c.Account != nil {
@@ -118,9 +107,9 @@ func (s *Server) onboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := strings.ToLower(strings.TrimSpace(body.Username))
-	if !usernamePattern.MatchString(username) {
-		writeError(w, http.StatusBadRequest, "username must be 3–30 chars: lowercase letters, numbers, _ or -")
+	username, ok := account.CleanUsername(body.Username)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "username must be 3-30 chars: lowercase letters, numbers, _ or -")
 		return
 	}
 
@@ -128,10 +117,10 @@ func (s *Server) onboard(w http.ResponseWriter, r *http.Request) {
 	// returning person to an account already registered under that address.
 	user, err := s.store.OnboardUser(r.Context(), c.ID, c.Email, username, strings.TrimSpace(body.Name))
 	switch {
-	case errors.Is(err, store.ErrUsernameTaken):
+	case errors.Is(err, account.ErrUsernameTaken):
 		writeError(w, http.StatusConflict, "that username is taken")
 		return
-	case errors.Is(err, store.ErrEmailTaken):
+	case errors.Is(err, account.ErrEmailTaken):
 		writeError(w, http.StatusConflict, "an account already exists for this email")
 		return
 	case err != nil:
@@ -146,7 +135,7 @@ func (s *Server) onboard(w http.ResponseWriter, r *http.Request) {
 // ponytail: assumes the project signs with asymmetric JWT keys (Supabase's
 // default). A legacy HS256 project publishes no JWKS — add the shared secret here
 // and verify HS256 if a first login fails on signature.
-func NewSupabaseVerifier(ctx context.Context, supabaseURL string) (VerifyToken, error) {
+func NewSupabaseVerifier(ctx context.Context, supabaseURL string) (account.VerifyToken, error) {
 	base := strings.TrimRight(supabaseURL, "/")
 	issuer := base + "/auth/v1"
 
@@ -155,7 +144,7 @@ func NewSupabaseVerifier(ctx context.Context, supabaseURL string) (VerifyToken, 
 		return nil, fmt.Errorf("load jwks: %w", err)
 	}
 
-	return func(_ context.Context, raw string) (AuthUser, error) {
+	return func(_ context.Context, raw string) (account.AuthUser, error) {
 		var claims struct {
 			Email string `json:"email"`
 			jwt.RegisteredClaims
@@ -166,11 +155,11 @@ func NewSupabaseVerifier(ctx context.Context, supabaseURL string) (VerifyToken, 
 			jwt.WithAudience("authenticated"),
 			jwt.WithExpirationRequired(),
 		); err != nil {
-			return AuthUser{}, err
+			return account.AuthUser{}, err
 		}
 		if claims.Subject == "" {
-			return AuthUser{}, errors.New("token has no subject")
+			return account.AuthUser{}, errors.New("token has no subject")
 		}
-		return AuthUser{ID: claims.Subject, Email: claims.Email}, nil
+		return account.AuthUser{ID: claims.Subject, Email: claims.Email}, nil
 	}, nil
 }

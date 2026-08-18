@@ -4,22 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"regexp"
 
-	"github.com/omjogani/shape-hill/internal/store"
+	"github.com/omjogani/shape-hill/internal/hills"
 )
 
-// Slugs live in URLs and get typed by hand: lowercase words joined by single hyphens.
-var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
-
 func (s *Server) listHills(w http.ResponseWriter, r *http.Request) {
-	hills, err := s.store.ListHillsByOwner(r.Context(), ownerID(r))
+	owned, err := s.store.ListHillsByOwner(r.Context(), ownerID(r))
 	if err != nil {
 		s.log.Error("list hills", "err", err)
 		writeError(w, http.StatusInternalServerError, "could not load hills")
 		return
 	}
-	writeJSON(w, http.StatusOK, hills)
+	writeJSON(w, http.StatusOK, owned)
 }
 
 func (s *Server) createHill(w http.ResponseWriter, r *http.Request) {
@@ -36,13 +32,13 @@ func (s *Server) createHill(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
-	if !slugPattern.MatchString(body.Slug) {
+	if !hills.ValidSlug(body.Slug) {
 		writeError(w, http.StatusBadRequest, "slug must be lowercase letters, numbers and hyphens")
 		return
 	}
 
 	hill, err := s.store.CreateHill(r.Context(), ownerID(r), body.Slug, body.Title, body.Description, body.IsPublic)
-	if errors.Is(err, store.ErrSlugTaken) {
+	if errors.Is(err, hills.ErrSlugTaken) {
 		writeError(w, http.StatusConflict, "that slug is already taken")
 		return
 	}
@@ -56,7 +52,7 @@ func (s *Server) createHill(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getHill(w http.ResponseWriter, r *http.Request) {
 	hill, err := s.store.HillBySlug(r.Context(), r.PathValue("slug"))
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, hills.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "hill not found")
 		return
 	}
@@ -66,7 +62,7 @@ func (s *Server) getHill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hill.OwnerID != ownerID(r) {
+	if !hill.OwnedBy(ownerID(r)) {
 		writeError(w, http.StatusNotFound, "hill not found")
 		return
 	}
@@ -83,7 +79,7 @@ func (s *Server) getHill(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getPublicHill(w http.ResponseWriter, r *http.Request) {
 	hill, err := s.store.HillBySlug(r.Context(), r.PathValue("slug"))
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, hills.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "hill not found")
 		return
 	}
@@ -126,7 +122,7 @@ func (s *Server) updateHill(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hill, err := s.store.UpdateHill(r.Context(), r.PathValue("slug"), ownerID(r), body.Title, body.IsPublic, body.TrackStalled)
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, hills.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "hill not found")
 		return
 	}
@@ -152,12 +148,10 @@ func (s *Server) createScope(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
-	if body.Color == "" {
-		body.Color = "#2F4C64"
-	}
+	body.Color = hills.ColorOrDefault(body.Color)
 
 	hill, err := s.store.HillBySlug(r.Context(), r.PathValue("slug"))
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, hills.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "hill not found")
 		return
 	}
@@ -166,7 +160,7 @@ func (s *Server) createScope(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "could not load hill")
 		return
 	}
-	if hill.OwnerID != ownerID(r) {
+	if !hill.OwnedBy(ownerID(r)) {
 		writeError(w, http.StatusNotFound, "hill not found")
 		return
 	}
@@ -212,12 +206,10 @@ func (s *Server) updateScope(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
-	if body.Color == "" {
-		body.Color = "#2F4C64"
-	}
+	body.Color = hills.ColorOrDefault(body.Color)
 
 	err := s.store.UpdateScope(r.Context(), r.PathValue("id"), body.Title, body.Color, ownerID(r))
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, hills.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "scope not found")
 		return
 	}
@@ -231,7 +223,7 @@ func (s *Server) updateScope(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) deleteScope(w http.ResponseWriter, r *http.Request) {
 	err := s.store.ArchiveScope(r.Context(), r.PathValue("id"), ownerID(r))
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, hills.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "scope not found")
 		return
 	}
@@ -255,13 +247,13 @@ func (s *Server) moveScope(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "position is required")
 		return
 	}
-	if *body.Position < 0 || *body.Position > 100 {
+	if !hills.ValidPosition(*body.Position) {
 		writeError(w, http.StatusBadRequest, "position must be between 0 and 100")
 		return
 	}
 
 	err := s.store.MoveScope(r.Context(), r.PathValue("id"), *body.Position, body.Note, ownerID(r))
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, hills.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "scope not found")
 		return
 	}

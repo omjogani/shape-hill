@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/omjogani/shape-hill/internal/hillchart"
-	"github.com/omjogani/shape-hill/internal/store"
+	"github.com/omjogani/shape-hill/internal/hills"
 )
 
 // embed serves the image that gets pasted into tickets and READMEs. It is fetched
@@ -43,7 +43,7 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ETag so a proxy can be told "nothing moved" without us drawing anything.
-	etag := fmt.Sprintf(`W/"%d-%s"`, store.LastMovedOn(hill, scopes).UnixNano(), style)
+	etag := fmt.Sprintf(`W/"%d-%s"`, hills.LastMovedOn(hill, scopes).UnixNano(), style)
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "public, max-age=60, must-revalidate")
 	w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
@@ -53,24 +53,24 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(hillchart.Render(chartOf(hill, scopes, style)))
+	w.Write(hillchart.Render(chartOf(hill, scopes, style, time.Now())))
 }
 
-func (s *Server) loadHill(w http.ResponseWriter, r *http.Request, slug string) (store.Hill, bool) {
+func (s *Server) loadHill(w http.ResponseWriter, r *http.Request, slug string) (hills.Hill, bool) {
 	hill, err := s.store.HillBySlug(r.Context(), slug)
-	if errors.Is(err, store.ErrNotFound) {
+	if errors.Is(err, hills.ErrNotFound) {
 		http.NotFound(w, r)
-		return store.Hill{}, false
+		return hills.Hill{}, false
 	}
 	if err != nil {
 		s.log.Error("load hill for embed", "err", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return store.Hill{}, false
+		return hills.Hill{}, false
 	}
 	return hill, true
 }
 
-func (s *Server) loadScopes(w http.ResponseWriter, r *http.Request, hillID string) ([]store.Scope, bool) {
+func (s *Server) loadScopes(w http.ResponseWriter, r *http.Request, hillID string) ([]hills.Scope, bool) {
 	scopes, err := s.store.ScopesForHill(r.Context(), hillID)
 	if err != nil {
 		s.log.Error("load scopes for embed", "err", err)
@@ -80,7 +80,7 @@ func (s *Server) loadScopes(w http.ResponseWriter, r *http.Request, hillID strin
 	return scopes, true
 }
 
-func chartOf(hill store.Hill, scopes []store.Scope, style hillchart.Style) hillchart.Chart {
+func chartOf(hill hills.Hill, scopes []hills.Scope, style hillchart.Style, now time.Time) hillchart.Chart {
 	chart := hillchart.Chart{Title: hill.Title, Style: style}
 	for _, scope := range scopes {
 		chart.Dots = append(chart.Dots, hillchart.Dot{
@@ -88,7 +88,7 @@ func chartOf(hill store.Hill, scopes []store.Scope, style hillchart.Style) hillc
 			Note:     scope.Note,
 			Color:    scope.Color,
 			Position: scope.Position,
-			Stalled:  hill.TrackStalled && time.Since(scope.MovedAt) > stalledAfter && scope.Position < 100,
+			Stalled:  scope.Stalled(hill, now),
 		})
 	}
 	return chart
