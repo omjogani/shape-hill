@@ -4,21 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/omjogani/shape-hill/internal/account"
+	"github.com/omjogani/shape-hill/internal/hills"
 )
 
-func (s *Store) CreateUser(ctx context.Context, email, username, name string) (User, error) {
-	user := User{Email: email, Username: username, Name: name}
+func (s *Store) CreateUser(ctx context.Context, email, username, name string) (account.User, error) {
+	user := account.User{Email: email, Username: username, Name: name}
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO users (email, username, name)
 		VALUES ($1, $2, $3)
 		RETURNING id::text
 	`, email, username, name).Scan(&user.ID)
 	if err != nil {
-		return User{}, fmt.Errorf("create user: %w", err)
+		return account.User{}, fmt.Errorf("create user: %w", err)
 	}
 	return user, nil
 }
@@ -31,17 +33,17 @@ func (s *Store) DeleteUser(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) UserByAuthID(ctx context.Context, authUserID string) (User, error) {
-	var user User
+func (s *Store) UserByAuthID(ctx context.Context, authUserID string) (account.User, error) {
+	var user account.User
 	err := s.pool.QueryRow(ctx, `
 		SELECT id::text, email, username, coalesce(name, '')
 		FROM users WHERE auth_user_id = $1::uuid
 	`, authUserID).Scan(&user.ID, &user.Email, &user.Username, &user.Name)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrNotFound
+		return account.User{}, account.ErrNotFound
 	}
 	if err != nil {
-		return User{}, fmt.Errorf("user by auth id: %w", err)
+		return account.User{}, fmt.Errorf("user by auth id: %w", err)
 	}
 	return user, nil
 }
@@ -49,8 +51,8 @@ func (s *Store) UserByAuthID(ctx context.Context, authUserID string) (User, erro
 // OnboardUser ties the caller's Supabase identity to a local account: it adopts
 // an existing row with the same email (link-by-email), otherwise creates one.
 // The email must come from the verified token — it is the linking key.
-func (s *Store) OnboardUser(ctx context.Context, authUserID, email, username, name string) (User, error) {
-	var user User
+func (s *Store) OnboardUser(ctx context.Context, authUserID, email, username, name string) (account.User, error) {
+	var user account.User
 	err := s.pool.QueryRow(ctx, `
 		WITH linked AS (
 			UPDATE users SET auth_user_id = $1::uuid
@@ -72,19 +74,19 @@ func (s *Store) OnboardUser(ctx context.Context, authUserID, email, username, na
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		switch pgErr.ConstraintName {
 		case "users_username_key":
-			return User{}, ErrUsernameTaken
+			return account.User{}, account.ErrUsernameTaken
 		case "users_email_key":
-			return User{}, ErrEmailTaken
+			return account.User{}, account.ErrEmailTaken
 		}
 	}
 	if err != nil {
-		return User{}, fmt.Errorf("onboard user: %w", err)
+		return account.User{}, fmt.Errorf("onboard user: %w", err)
 	}
 	return user, nil
 }
 
-func (s *Store) CreateHill(ctx context.Context, ownerID, slug, title, description string, isPublic bool) (Hill, error) {
-	hill := Hill{OwnerID: ownerID, Slug: slug, Title: title, Description: description, IsPublic: isPublic}
+func (s *Store) CreateHill(ctx context.Context, ownerID, slug, title, description string, isPublic bool) (hills.Hill, error) {
+	hill := hills.Hill{OwnerID: ownerID, Slug: slug, Title: title, Description: description, IsPublic: isPublic}
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO hills (owner_id, slug, title, description, is_public)
 		VALUES ($1::uuid, $2, $3, $4, $5)
@@ -93,15 +95,15 @@ func (s *Store) CreateHill(ctx context.Context, ownerID, slug, title, descriptio
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return Hill{}, ErrSlugTaken
+		return hills.Hill{}, hills.ErrSlugTaken
 	}
 	if err != nil {
-		return Hill{}, fmt.Errorf("create hill: %w", err)
+		return hills.Hill{}, fmt.Errorf("create hill: %w", err)
 	}
 	return hill, nil
 }
 
-func (s *Store) ListHillsByOwner(ctx context.Context, ownerID string) ([]Hill, error) {
+func (s *Store) ListHillsByOwner(ctx context.Context, ownerID string) ([]hills.Hill, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, track_stalled, created_at, updated_at
 		FROM hills
@@ -114,20 +116,20 @@ func (s *Store) ListHillsByOwner(ctx context.Context, ownerID string) ([]Hill, e
 	defer rows.Close()
 
 	// Non-nil so an empty table marshals to [] rather than null.
-	hills := []Hill{}
+	owned := []hills.Hill{}
 	for rows.Next() {
-		var hill Hill
+		var hill hills.Hill
 		if err := rows.Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
 			&hill.IsPublic, &hill.TrackStalled, &hill.CreatedAt, &hill.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan hill: %w", err)
 		}
-		hills = append(hills, hill)
+		owned = append(owned, hill)
 	}
-	return hills, rows.Err()
+	return owned, rows.Err()
 }
 
-func (s *Store) HillBySlug(ctx context.Context, slug string) (Hill, error) {
-	var hill Hill
+func (s *Store) HillBySlug(ctx context.Context, slug string) (hills.Hill, error) {
+	var hill hills.Hill
 	err := s.pool.QueryRow(ctx, `
 		SELECT id::text, owner_id::text, slug, title, coalesce(description, ''), is_public, track_stalled, created_at, updated_at
 		FROM hills
@@ -135,16 +137,16 @@ func (s *Store) HillBySlug(ctx context.Context, slug string) (Hill, error) {
 	`, slug).Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
 		&hill.IsPublic, &hill.TrackStalled, &hill.CreatedAt, &hill.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Hill{}, ErrNotFound
+		return hills.Hill{}, hills.ErrNotFound
 	}
 	if err != nil {
-		return Hill{}, fmt.Errorf("get hill: %w", err)
+		return hills.Hill{}, fmt.Errorf("get hill: %w", err)
 	}
 	return hill, nil
 }
 
-func (s *Store) UpdateHill(ctx context.Context, slug, ownerID string, title *string, isPublic, trackStalled *bool) (Hill, error) {
-	var hill Hill
+func (s *Store) UpdateHill(ctx context.Context, slug, ownerID string, title *string, isPublic, trackStalled *bool) (hills.Hill, error) {
+	var hill hills.Hill
 	err := s.pool.QueryRow(ctx, `
 		UPDATE hills
 		SET title = coalesce($3, title),
@@ -156,28 +158,28 @@ func (s *Store) UpdateHill(ctx context.Context, slug, ownerID string, title *str
 	`, slug, ownerID, title, isPublic, trackStalled).Scan(&hill.ID, &hill.OwnerID, &hill.Slug, &hill.Title, &hill.Description,
 		&hill.IsPublic, &hill.TrackStalled, &hill.CreatedAt, &hill.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Hill{}, ErrNotFound
+		return hills.Hill{}, hills.ErrNotFound
 	}
 	if err != nil {
-		return Hill{}, fmt.Errorf("update hill: %w", err)
+		return hills.Hill{}, fmt.Errorf("update hill: %w", err)
 	}
 	return hill, nil
 }
 
-func (s *Store) CreateScope(ctx context.Context, hillID, title, description, color string, sortOrder int16) (Scope, error) {
-	scope := Scope{Title: title, Description: description, Color: color, SortOrder: sortOrder}
+func (s *Store) CreateScope(ctx context.Context, hillID, title, description, color string, sortOrder int16) (hills.Scope, error) {
+	scope := hills.Scope{Title: title, Description: description, Color: color, SortOrder: sortOrder}
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO scopes (hill_id, title, description, color, sort_order)
 		VALUES ($1::uuid, $2, $3, $4, $5)
 		RETURNING id::text, created_at
 	`, hillID, title, description, color, sortOrder).Scan(&scope.ID, &scope.MovedAt)
 	if err != nil {
-		return Scope{}, fmt.Errorf("create scope: %w", err)
+		return hills.Scope{}, fmt.Errorf("create scope: %w", err)
 	}
 	return scope, nil
 }
 
-func (s *Store) SnapshotsForScope(ctx context.Context, scopeID, ownerID string) ([]Snapshot, error) {
+func (s *Store) SnapshotsForScope(ctx context.Context, scopeID, ownerID string) ([]hills.Snapshot, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT sp.position, coalesce(sp.note, ''), sp.created_at
 		FROM scope_positions sp
@@ -192,9 +194,9 @@ func (s *Store) SnapshotsForScope(ctx context.Context, scopeID, ownerID string) 
 	defer rows.Close()
 
 	// Non-nil so an untouched scope marshals to [] rather than null.
-	snapshots := []Snapshot{}
+	snapshots := []hills.Snapshot{}
 	for rows.Next() {
-		var snap Snapshot
+		var snap hills.Snapshot
 		if err := rows.Scan(&snap.Position, &snap.Note, &snap.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan snapshot: %w", err)
 		}
@@ -203,7 +205,7 @@ func (s *Store) SnapshotsForScope(ctx context.Context, scopeID, ownerID string) 
 	return snapshots, rows.Err()
 }
 
-func (s *Store) SnapshotsForPublicScope(ctx context.Context, scopeID string) ([]Snapshot, error) {
+func (s *Store) SnapshotsForPublicScope(ctx context.Context, scopeID string) ([]hills.Snapshot, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT sp.position, coalesce(sp.note, ''), sp.created_at
 		FROM scope_positions sp
@@ -217,9 +219,9 @@ func (s *Store) SnapshotsForPublicScope(ctx context.Context, scopeID string) ([]
 	}
 	defer rows.Close()
 
-	snapshots := []Snapshot{}
+	snapshots := []hills.Snapshot{}
 	for rows.Next() {
-		var snap Snapshot
+		var snap hills.Snapshot
 		if err := rows.Scan(&snap.Position, &snap.Note, &snap.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan public snapshot: %w", err)
 		}
@@ -238,7 +240,7 @@ func (s *Store) UpdateScope(ctx context.Context, scopeID, title, color, ownerID 
 		return fmt.Errorf("update scope: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return hills.ErrNotFound
 	}
 	return nil
 }
@@ -253,14 +255,14 @@ func (s *Store) ArchiveScope(ctx context.Context, scopeID, ownerID string) error
 		return fmt.Errorf("archive scope: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return hills.ErrNotFound
 	}
 	return nil
 }
 
 // ScopesForHill returns each live scope with its most recent position. A scope
 // that has never been moved sits at 0.
-func (s *Store) ScopesForHill(ctx context.Context, hillID string) ([]Scope, error) {
+func (s *Store) ScopesForHill(ctx context.Context, hillID string) ([]hills.Scope, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT s.id::text, s.title, coalesce(s.description, ''), s.color, s.sort_order,
 		       coalesce(latest.position, 0), coalesce(latest.note, ''),
@@ -281,9 +283,9 @@ func (s *Store) ScopesForHill(ctx context.Context, hillID string) ([]Scope, erro
 	}
 	defer rows.Close()
 
-	scopes := []Scope{}
+	scopes := []hills.Scope{}
 	for rows.Next() {
-		var scope Scope
+		var scope hills.Scope
 		if err := rows.Scan(&scope.ID, &scope.Title, &scope.Description, &scope.Color,
 			&scope.SortOrder, &scope.Position, &scope.Note, &scope.MovedAt); err != nil {
 			return nil, fmt.Errorf("scan scope: %w", err)
@@ -307,18 +309,7 @@ func (s *Store) MoveScope(ctx context.Context, scopeID string, position int16, n
 		return fmt.Errorf("move scope: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return hills.ErrNotFound
 	}
 	return nil
-}
-
-// LastMovedOn is the newest movement anywhere on the hill — the ETag for its image.
-func LastMovedOn(hill Hill, scopes []Scope) time.Time {
-	last := hill.UpdatedAt
-	for _, scope := range scopes {
-		if scope.MovedAt.After(last) {
-			last = scope.MovedAt
-		}
-	}
-	return last
 }

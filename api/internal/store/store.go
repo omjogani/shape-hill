@@ -1,18 +1,20 @@
+// Package store is the Postgres adapter. It owns SQL and nothing else.
 package store
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/omjogani/shape-hill/internal/account"
+	"github.com/omjogani/shape-hill/internal/hills"
 )
 
-var ErrNotFound = errors.New("not found")
-var ErrSlugTaken = errors.New("slug already taken")
-var ErrUsernameTaken = errors.New("username already taken")
-var ErrEmailTaken = errors.New("email already registered")
+var (
+	_ hills.Repository   = (*Store)(nil)
+	_ account.Repository = (*Store)(nil)
+)
 
 type Store struct {
 	pool *pgxpool.Pool
@@ -31,41 +33,3 @@ func New(ctx context.Context, databaseURL string) (*Store, error) {
 }
 
 func (s *Store) Close() { s.pool.Close() }
-
-type User struct {
-	ID       string
-	Email    string
-	Username string
-	Name     string
-}
-
-type Hill struct {
-	ID           string
-	OwnerID      string
-	Slug         string
-	Title        string
-	Description  string
-	IsPublic     bool
-	TrackStalled bool
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-}
-
-// Scope carries its latest position, so rendering a hill needs one query for the
-// hill and one for its scopes.
-type Scope struct {
-	ID          string
-	Title       string
-	Description string
-	Color       string
-	SortOrder   int16
-	Position    int16
-	Note        string
-	MovedAt     time.Time
-}
-
-type Snapshot struct {
-	Position  int16
-	Note      string
-	CreatedAt time.Time
-}
