@@ -12,16 +12,15 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/omjogani/shape-hill/internal/account"
 )
 
-// fakeVerify stands in for Supabase: it treats the token string as the auth
-// user id and derives a matching email, so a test picks an identity by choosing
-// its bearer token. "bad" fails verification.
-func fakeVerify(_ context.Context, token string) (AuthUser, error) {
+func fakeVerify(_ context.Context, token string) (account.AuthUser, error) {
 	if token == "bad" {
-		return AuthUser{}, errors.New("bad token")
+		return account.AuthUser{}, errors.New("bad token")
 	}
-	return AuthUser{ID: token, Email: token + "@example.com"}, nil
+	return account.AuthUser{ID: token, Email: token + "@example.com"}, nil
 }
 
 // newAuthID is a fresh uuid to use as a bearer token (fakeVerify treats it as sub).

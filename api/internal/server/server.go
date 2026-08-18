@@ -6,20 +6,23 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/omjogani/shape-hill/internal/store"
+	"github.com/omjogani/shape-hill/internal/account"
+	"github.com/omjogani/shape-hill/internal/hills"
 )
 
-// A scope that hasn't moved in this long is stalled, the signal the chart exists to show.
-const stalledAfter = 7 * 24 * time.Hour
-
-type Server struct {
-	store  *store.Store
-	log    *slog.Logger
-	mux    *http.ServeMux
-	verify VerifyToken
+type Store interface {
+	hills.Repository
+	account.Repository
 }
 
-func New(st *store.Store, log *slog.Logger, verify VerifyToken) *Server {
+type Server struct {
+	store  Store
+	log    *slog.Logger
+	mux    *http.ServeMux
+	verify account.VerifyToken
+}
+
+func New(st Store, log *slog.Logger, verify account.VerifyToken) *Server {
 	server := &Server{store: st, log: log, mux: http.NewServeMux(), verify: verify}
 
 	server.mux.HandleFunc("GET /healthz", server.health)
