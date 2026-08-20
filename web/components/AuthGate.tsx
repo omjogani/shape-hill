@@ -8,7 +8,8 @@ import { useMe, useSession } from "@/lib/auth";
 const CALLBACK = "/auth/callback";
 
 const isPublicViewPath = (pathname: string) => /^\/[^/]+\/view$/.test(pathname);
-const isPublicPath = (pathname: string) => pathname === CALLBACK || isPublicViewPath(pathname);
+const isPublicPath = (pathname: string) =>
+  pathname === "/" || pathname === CALLBACK || isPublicViewPath(pathname);
 
 function Full({ children }: { children: React.ReactNode }) {
   return (
@@ -50,7 +51,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (onboarded === false && pathname !== "/onboarding") {
       router.replace("/onboarding");
     } else if (onboarded && (pathname === "/login" || pathname === "/onboarding")) {
-      router.replace("/");
+      router.replace("/app");
     }
   }, [pathname, session, me.isLoading, onboarded, router]);
 

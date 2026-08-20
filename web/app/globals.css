@@ -94,3 +94,73 @@ body {
   stroke: var(--sage);
   stroke-width: 3.5;
 }
+
+.landing {
+  color-scheme: dark;
+
+  --bg: #0a0a0b;
+  --panel: #131316;
+  --edge: #26262b;
+  --text: #f4f4f2;
+  --dim: #8d8d87;
+  --accent: #a9c69a;
+
+  background: var(--bg);
+  color: var(--text);
+  font-feature-settings: "ss01";
+}
+
+.landing-chart {
+  --paper: #0d1117;
+  --hill: #161b22;
+  --line: #30363d;
+  --ink: #e6edf3;
+  --sage: #8b949e;
+  --alarm: #f85149;
+}
+
+.hero-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: -6rem;
+  width: min(72rem, 130vw);
+  height: 44rem;
+  translate: -50% 0;
+  pointer-events: none;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(169, 198, 154, 0.17),
+    rgba(88, 166, 255, 0.08) 42%,
+    transparent 70%
+  );
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fade-up {
+  animation: fade-up linear both;
+  animation-timeline: view();
+  animation-range: entry 15% entry 85%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up {
+    animation: none;
+  }
+}
