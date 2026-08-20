@@ -112,9 +112,6 @@ export default function LandingPage() {
 
         <section className="fade-up pb-32">
           <HeroChart />
-          <p className="mt-4 text-center font-mono text-xs uppercase tracking-widest text-[var(--dim)]">
-            Drag a dot. Arrow keys work too.
-          </p>
         </section>
 
         <section className="fade-up border-t border-[var(--edge)] py-28">
