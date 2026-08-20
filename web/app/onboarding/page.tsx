@@ -22,7 +22,7 @@ export default function OnboardingPage() {
     try {
       await api.onboard(username.trim());
       await qc.invalidateQueries({ queryKey: ["me"] });
-      router.replace("/");
+      router.replace("/app");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
       setBusy(false);

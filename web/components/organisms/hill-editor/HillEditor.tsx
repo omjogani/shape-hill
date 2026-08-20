@@ -49,7 +49,7 @@ export function HillEditor({ slug }: { slug: string }) {
     <main className="mx-auto flex w-full max-w-[1700px] flex-col gap-8 px-8 py-8">
       <header className="flex items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
-          <Button variant="ghost" onClick={() => router.push("/")}>
+          <Button variant="ghost" onClick={() => router.push("/app")}>
             Back
           </Button>
           <TitleForm slug={slug} title={hill.Title} />
