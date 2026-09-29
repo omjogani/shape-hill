@@ -80,18 +80,3 @@ func TestOwnedBy(t *testing.T) {
 		t.Error("an empty caller must never own a hill")
 	}
 }
-
-func TestLastMovedOnTracksTheNewestMovement(t *testing.T) {
-	hill := Hill{UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
-	older := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
-	newest := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-
-	got := LastMovedOn(hill, []Scope{{MovedAt: older}, {MovedAt: newest}, {MovedAt: older}})
-	if !got.Equal(newest) {
-		t.Errorf("LastMovedOn = %v, want the newest movement %v", got, newest)
-	}
-
-	if got := LastMovedOn(hill, nil); !got.Equal(hill.UpdatedAt) {
-		t.Errorf("with no scopes it should fall back to the hill itself, got %v", got)
-	}
-}

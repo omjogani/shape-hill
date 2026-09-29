@@ -146,6 +146,52 @@ func TestEmbedServesSVGAndHonoursETag(t *testing.T) {
 	}
 }
 
+// Renaming a scope moves nothing, but it changes the picture, so the ETag must
+// change with it or the embed keeps showing the old name.
+func TestEmbedETagChangesWhenAScopeIsRenamed(t *testing.T) {
+	srv, _, _, token := testServer(t)
+
+	_, hill := postWithToken(t, srv.URL+"/api/hills", token, map[string]any{
+		"slug": "billing-v3", "title": "Billing v3", "is_public": true,
+	})
+	slug := hill["Slug"].(string)
+
+	_, scope := postWithToken(t, srv.URL+"/api/hills/"+slug+"/scopes", token, map[string]any{
+		"title": "Card on file", "color": "#2F4C64",
+	})
+	scopeID := scope["ID"].(string)
+
+	before, err := http.Get(srv.URL + "/hill/" + slug + ".svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	before.Body.Close()
+	etag := before.Header.Get("ETag")
+
+	renamed := patchWithToken(t, srv.URL+"/api/scopes/"+scopeID, token, map[string]any{
+		"title": "Saved cards", "color": "#2F4C64",
+	})
+	if renamed.StatusCode != http.StatusNoContent {
+		t.Fatalf("rename scope = %d, want 204", renamed.StatusCode)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/hill/"+slug+".svg", nil)
+	req.Header.Set("If-None-Match", etag)
+	after, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer after.Body.Close()
+
+	if after.StatusCode != http.StatusOK {
+		t.Fatalf("renamed scope = %d, want 200 with the redrawn chart", after.StatusCode)
+	}
+	body, _ := io.ReadAll(after.Body)
+	if !strings.Contains(string(body), "Saved cards") {
+		t.Error("the redrawn chart should carry the new scope name")
+	}
+}
+
 func TestEmbedHidesPrivateHills(t *testing.T) {
 	srv, _, _, token := testServer(t)
 

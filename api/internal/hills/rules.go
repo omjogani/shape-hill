@@ -31,13 +31,3 @@ func (s Scope) AtSummit() bool { return s.Position >= Summit }
 func (s Scope) Stalled(h Hill, now time.Time) bool {
 	return h.TrackStalled && !s.AtSummit() && now.Sub(s.MovedAt) > StalledAfter
 }
-
-func LastMovedOn(hill Hill, scopes []Scope) time.Time {
-	last := hill.UpdatedAt
-	for _, scope := range scopes {
-		if scope.MovedAt.After(last) {
-			last = scope.MovedAt
-		}
-	}
-	return last
-}

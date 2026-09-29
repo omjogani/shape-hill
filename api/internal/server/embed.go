@@ -1,6 +1,8 @@
 package server
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -42,8 +44,17 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ETag so a proxy can be told "nothing moved" without us drawing anything.
-	etag := fmt.Sprintf(`W/"%d-%s"`, hills.LastMovedOn(hill, scopes).UnixNano(), style)
+	// ETag so a proxy can be told "nothing changed" without us drawing anything.
+	// It hashes what would be drawn, not timestamps: renaming or recolouring a
+	// scope, archiving one, or a dot going stale all change the picture without
+	// moving anything.
+	chart := chartOf(hill, scopes, style, time.Now())
+	etag, err := etagOf(chart)
+	if err != nil {
+		s.log.Error("etag for embed", "err", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "public, max-age=60, must-revalidate")
 	w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
@@ -53,7 +64,16 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(hillchart.Render(chartOf(hill, scopes, style, time.Now())))
+	w.Write(hillchart.Render(chart))
+}
+
+func etagOf(chart hillchart.Chart) (string, error) {
+	data, err := json.Marshal(chart)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf(`W/"%x"`, sum[:16]), nil
 }
 
 func (s *Server) loadHill(w http.ResponseWriter, r *http.Request, slug string) (hills.Hill, bool) {
