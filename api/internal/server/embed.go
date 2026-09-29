@@ -44,10 +44,7 @@ func (s *Server) embed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ETag so a proxy can be told "nothing changed" without us drawing anything.
-	// It hashes what would be drawn, not timestamps: renaming or recolouring a
-	// scope, archiving one, or a dot going stale all change the picture without
-	// moving anything.
+	// eTag to detect any new changes including styles, colors
 	chart := chartOf(hill, scopes, style, time.Now())
 	etag, err := etagOf(chart)
 	if err != nil {

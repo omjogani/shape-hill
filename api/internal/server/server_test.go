@@ -146,8 +146,6 @@ func TestEmbedServesSVGAndHonoursETag(t *testing.T) {
 	}
 }
 
-// Renaming a scope moves nothing, but it changes the picture, so the ETag must
-// change with it or the embed keeps showing the old name.
 func TestEmbedETagChangesWhenAScopeIsRenamed(t *testing.T) {
 	srv, _, _, token := testServer(t)
 
