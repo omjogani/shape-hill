@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/omjogani/shape-hill/internal/hills"
+	"github.com/omjogani/shape-hill/api/internal/hills"
 )
 
 func (s *Server) listHills(w http.ResponseWriter, r *http.Request) {

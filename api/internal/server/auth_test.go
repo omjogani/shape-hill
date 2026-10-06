@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/omjogani/shape-hill/internal/account"
+	"github.com/omjogani/shape-hill/api/internal/account"
 )
 
 func fakeVerify(_ context.Context, token string) (account.AuthUser, error) {

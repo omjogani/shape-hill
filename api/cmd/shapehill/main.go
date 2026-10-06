@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/omjogani/shape-hill/internal/cli"
+	"github.com/omjogani/shape-hill/api/internal/cli"
 )
 
 func main() {

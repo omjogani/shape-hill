@@ -10,7 +10,7 @@ import (
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/omjogani/shape-hill/internal/account"
+	"github.com/omjogani/shape-hill/api/internal/account"
 )
 
 type caller struct {

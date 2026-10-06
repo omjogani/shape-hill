@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/omjogani/shape-hill/internal/hillchart"
-	"github.com/omjogani/shape-hill/internal/hills"
+	"github.com/omjogani/shape-hill/api/internal/hillchart"
+	"github.com/omjogani/shape-hill/api/internal/hills"
 )
 
 // embed serves the image that gets pasted into tickets and READMEs. It is fetched

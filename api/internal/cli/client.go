@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/omjogani/shape-hill/internal/account"
-	"github.com/omjogani/shape-hill/internal/hills"
+	"github.com/omjogani/shape-hill/api/internal/account"
+	"github.com/omjogani/shape-hill/api/internal/hills"
 )
 
 type apiError struct {

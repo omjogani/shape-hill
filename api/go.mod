@@ -1,4 +1,4 @@
-module github.com/omjogani/shape-hill
+module github.com/omjogani/shape-hill/api
 
 go 1.26.5
 

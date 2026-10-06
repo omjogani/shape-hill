@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/omjogani/shape-hill/internal/account"
+	"github.com/omjogani/shape-hill/api/internal/account"
 )
 
 var _ account.TokenRepository = (*Store)(nil)

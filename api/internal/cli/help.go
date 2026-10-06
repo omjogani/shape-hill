@@ -41,7 +41,7 @@ func renderRootLong() string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
-// Version is set with -ldflags "-X github.com/omjogani/shape-hill/internal/cli.Version=v0.1.0".
+// Version is set with -ldflags "-X github.com/omjogani/shape-hill/api/internal/cli.Version=v0.1.0".
 var Version = ""
 
 func version() string {

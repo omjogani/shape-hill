@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/omjogani/shape-hill/internal/account"
+	"github.com/omjogani/shape-hill/api/internal/account"
 )
 
 func (s *Server) listTokens(w http.ResponseWriter, r *http.Request) {
