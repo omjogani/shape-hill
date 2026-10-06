@@ -9,7 +9,10 @@ const CALLBACK = "/auth/callback";
 
 const isPublicViewPath = (pathname: string) => /^\/[^/]+\/view$/.test(pathname);
 const isPublicPath = (pathname: string) =>
-  pathname === "/" || pathname === CALLBACK || isPublicViewPath(pathname);
+  pathname === "/" ||
+  pathname === CALLBACK ||
+  pathname.startsWith("/docs/") ||
+  isPublicViewPath(pathname);
 
 function Full({ children }: { children: React.ReactNode }) {
   return (

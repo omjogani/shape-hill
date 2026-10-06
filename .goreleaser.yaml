@@ -1,0 +1,33 @@
+# Releases the shapehill CLI. Push a tag like v0.1.0 and the release-cli
+# workflow publishes binaries to GitHub Releases.
+version: 2
+project_name: shapehill
+
+builds:
+  - id: shapehill
+    dir: api
+    main: ./cmd/shapehill
+    binary: shapehill
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X github.com/omjogani/shape-hill/api/internal/cli.Version={{ .Version }}
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
