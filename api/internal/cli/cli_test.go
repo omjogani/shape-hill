@@ -44,8 +44,6 @@ func run(e env, args ...string) result {
 
 func unique() string { return strconv.FormatInt(time.Now().UnixNano(), 36) }
 
-// testEnv starts the real API over the local database and returns an env whose
-// token belongs to a fresh user.
 func testEnv(t *testing.T) env {
 	t.Helper()
 

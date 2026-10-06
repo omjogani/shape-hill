@@ -4,8 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// completeArgs completes a hill slug first, then (if withScope) a scope title on
-// that hill. Completion fails quietly: no token or no network means no hints.
+// Errors give no suggestions rather than breaking the shell.
 func (a *app) completeArgs(withScope bool) cobra.CompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		c, err := a.client()

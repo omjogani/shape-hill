@@ -1,0 +1,12 @@
+Driving shapehill from an AI agent
+
+  - Pass --json. Results go to stdout; errors go to stderr as {"error", "code"}.
+  - Branch on the exit code: 0 ok, 1 failure (retry), 2 invalid input (fix the
+    command), 3 not found, 4 auth (stop and ask the user), 5 conflict.
+  - Retries are safe: "hill create" and "scope add" take --if-not-exists, and
+    repeating the latest "scope move" records nothing.
+  - Refer to scopes by exact title or ID; "hill show <slug> --json" lists both.
+  - Always pass --note on "scope move" saying what changed. The note is the
+    snapshot people read on the chart.
+  - Choose positions by certainty, not by percent done: below 50 while unknowns
+    remain, 50 once the approach is settled, 100 when shipped.

@@ -1,0 +1,14 @@
+Shape Up hill charts from the terminal: create a hill, embed it in a story,
+then move its scopes as the work progresses.
+
+{{heading "Positions (0-100)"}}
+  0-49    {{phase "uphill"}}    figuring out the approach; unknowns remain
+  50-99   {{phase "downhill"}}  approach settled (50 is the top); executing
+  100     {{phase "done"}}
+
+{{heading "Environment"}}
+  SHAPEHILL_TOKEN    personal access token, from <web>/app/tokens
+  SHAPEHILL_API_URL  API origin (default {{.API}})
+  SHAPEHILL_WEB_URL  web origin (default {{.Web}})
+
+{{heading "Exit codes"}} 0 ok · 1 failure · 2 invalid input · 3 not found · 4 auth · 5 conflict

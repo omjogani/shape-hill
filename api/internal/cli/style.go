@@ -12,8 +12,6 @@ import (
 	"github.com/omjogani/shape-hill/internal/hills"
 )
 
-// fatih/color already turns itself off when stdout isn't a terminal or NO_COLOR
-// is set; --no-color covers everything else.
 var (
 	bold    = color.New(color.Bold).SprintFunc()
 	faint   = color.New(color.Faint).SprintFunc()
@@ -40,7 +38,7 @@ func paintPhase(s hills.Scope, stalled bool) string {
 
 const trackWidth = 21
 
-// track draws a scope's place on the hill: ──────●───┼────────── with ┼ the top.
+// track draws ──────●───┼──────────, where ┼ is the top of the hill.
 func track(s hills.Scope, stalled bool) string {
 	runes := []rune(strings.Repeat("─", trackWidth))
 	runes[trackWidth/2] = '┼'
@@ -61,15 +59,13 @@ func printWarn(w io.Writer, format string, args ...any) {
 	fmt.Fprintf(w, "%s %s\n", warning("!"), fmt.Sprintf(format, args...))
 }
 
-// cell is a table value: plain text for measuring, painted text for printing.
 type cell struct{ plain, painted string }
 
 func plain(s string) cell { return cell{s, s} }
 
 func painted(s string, paint func(...any) string) cell { return cell{s, paint(s)} }
 
-// table aligns columns by visible width, which tabwriter can't do once ANSI
-// colour codes are in the text.
+// Aligns by visible width; tabwriter miscounts ANSI colour codes.
 func table(w io.Writer, headers []string, rows [][]cell) {
 	widths := make([]int, len(headers))
 	for i, h := range headers {
@@ -101,37 +97,6 @@ func table(w io.Writer, headers []string, rows [][]cell) {
 		line(row)
 	}
 }
-
-const usageTemplate = `{{heading "Usage"}}{{if and .Runnable (not .HasAvailableSubCommands)}}
-  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
-
-{{heading "Aliases"}}
-  {{.NameAndAliases}}{{end}}{{if .HasExample}}
-
-{{heading "Examples"}}
-{{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
-
-{{heading "Commands"}}{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding | accent}} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
-
-{{heading .Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
-  {{rpad .Name .NamePadding | accent}} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
-
-{{heading "Additional Commands"}}{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
-  {{rpad .Name .NamePadding | accent}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
-
-{{heading "Flags"}}
-{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
-
-{{heading "Global Flags"}}
-{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
-
-{{heading "Help Topics"}}{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
-  {{rpad .CommandPath .CommandPathPadding | accent}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
-
-{{faint (printf "Run \"%s [command] --help\" for more about a command." .CommandPath)}}{{end}}
-`
 
 func ago(t, now time.Time) string {
 	d := now.Sub(t)

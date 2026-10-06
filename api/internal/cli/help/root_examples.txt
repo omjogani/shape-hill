@@ -1,0 +1,5 @@
+  export SHAPEHILL_TOKEN=shk_...
+  shapehill hill create launch-v2 --title "Launch v2" --public
+  shapehill scope add launch-v2 "API integration"
+  shapehill scope move launch-v2 "API integration" 40 --note "auth approach settled"
+  shapehill hill show launch-v2
