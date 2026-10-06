@@ -80,3 +80,22 @@ func TestOwnedBy(t *testing.T) {
 		t.Error("an empty caller must never own a hill")
 	}
 }
+
+func TestPhase(t *testing.T) {
+	tests := []struct {
+		at    int16
+		phase string
+	}{
+		{0, "uphill"},
+		{49, "uphill"},
+		{50, "downhill"},
+		{99, "downhill"},
+		{100, "done"},
+	}
+
+	for _, tc := range tests {
+		if got := (Scope{Position: tc.at}).Phase(); got != tc.phase {
+			t.Errorf("Phase() at %d = %q, want %q", tc.at, got, tc.phase)
+		}
+	}
+}

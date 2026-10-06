@@ -123,6 +123,36 @@ atlas migrate apply --env supabase --baseline 20260101000000
   so it can never reach Supabase. Hitting Supabase requires typing `--env supabase`.
 - `atlas migrate lint` requires a (free) `atlas login` as of Atlas v0.38.
 
+## CLI
+
+`shapehill` creates hills and moves their scopes from the terminal, for people
+and AI agents. It talks to the HTTP API with a personal access token.
+
+```bash
+go build -o shapehill ./cmd/shapehill
+
+export SHAPEHILL_TOKEN=shk_...                    # create one at <web>/app/tokens
+export SHAPEHILL_API_URL=http://localhost:8080    # default: production
+export SHAPEHILL_WEB_URL=http://localhost:3000    # default: production
+
+shapehill hill create launch-v2 --title "Launch v2" --public   # prints the embed markdown
+shapehill scope add launch-v2 "API integration"
+shapehill scope move launch-v2 "API integration" 40 --note "auth approach settled"
+shapehill hill show launch-v2
+```
+
+Every command takes `--json`. Exit codes: 0 ok, 1 failure, 2 invalid input,
+3 not found, 4 auth, 5 conflict. `shapehill --help` has the rest, and
+`shapehill help agents` is the guide for AI agents.
+
+Output is coloured in a terminal and plain when piped; `--no-color` or
+`NO_COLOR=1` turns it off. Tab completion (including your hill slugs and scope
+titles) comes from `shapehill completion zsh|bash|fish|powershell`, e.g.:
+
+```bash
+shapehill completion zsh > "${fpath[1]}/_shapehill"
+```
+
 ## Go
 
 ```bash

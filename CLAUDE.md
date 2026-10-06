@@ -18,6 +18,7 @@ Both are scaffolds; there is no wiring between them yet. Expect to establish con
 go run .
 go build ./...
 go test ./...            # single test: go test -run TestName ./...
+go run ./cmd/shapehill   # the CLI (internal/cli); --help for commands
 
 # web/  (pnpm, not npm)
 pnpm dev                 # next dev
