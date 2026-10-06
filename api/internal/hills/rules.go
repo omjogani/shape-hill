@@ -31,3 +31,14 @@ func (s Scope) AtSummit() bool { return s.Position >= Summit }
 func (s Scope) Stalled(h Hill, now time.Time) bool {
 	return h.TrackStalled && !s.AtSummit() && now.Sub(s.MovedAt) > StalledAfter
 }
+
+func (s Scope) Phase() string {
+	switch {
+	case s.AtSummit():
+		return "done"
+	case s.Position < 50:
+		return "uphill"
+	default:
+		return "downhill"
+	}
+}

@@ -15,7 +15,8 @@ import (
 
 type caller struct {
 	account.AuthUser
-	Account *account.User
+	Account     *account.User
+	ViaAPIToken bool
 }
 
 type ctxKey int
@@ -27,6 +28,11 @@ func (s *Server) authenticate(next http.HandlerFunc) http.HandlerFunc {
 		token, ok := bearer(r)
 		if !ok {
 			writeError(w, http.StatusUnauthorized, "missing bearer token")
+			return
+		}
+
+		if account.IsAPIToken(token) {
+			s.authenticateAPIToken(next, token)(w, r)
 			return
 		}
 
@@ -53,6 +59,36 @@ func (s *Server) authenticate(next http.HandlerFunc) http.HandlerFunc {
 		ctx := context.WithValue(r.Context(), callerKey, c)
 		next(w, r.WithContext(ctx))
 	}
+}
+
+func (s *Server) authenticateAPIToken(next http.HandlerFunc, token string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := s.store.UserByAPIToken(r.Context(), account.HashAPIToken(token))
+		if errors.Is(err, account.ErrNotFound) {
+			writeError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		if err != nil {
+			s.log.Error("resolve api token", "err", err)
+			writeError(w, http.StatusInternalServerError, "could not resolve user")
+			return
+		}
+
+		c := caller{AuthUser: account.AuthUser{Email: user.Email}, Account: &user, ViaAPIToken: true}
+		ctx := context.WithValue(r.Context(), callerKey, c)
+		next(w, r.WithContext(ctx))
+	}
+}
+
+// Token management needs a browser session, so a leaked token can't mint more.
+func (s *Server) sessionOnly(next http.HandlerFunc) http.HandlerFunc {
+	return s.authed(func(w http.ResponseWriter, r *http.Request) {
+		if c, _ := callerFrom(r.Context()); c.ViaAPIToken {
+			writeError(w, http.StatusForbidden, "sign in on the web to manage tokens")
+			return
+		}
+		next(w, r)
+	})
 }
 
 func (s *Server) authed(next http.HandlerFunc) http.HandlerFunc {
