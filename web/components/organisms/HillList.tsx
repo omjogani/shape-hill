@@ -17,6 +17,12 @@ export function HillList() {
           <h1 className="font-display text-3xl">Hill charts</h1>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/app/tokens"
+            className="rounded-md px-3 py-1.5 text-sm text-sage hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+          >
+            API tokens
+          </Link>
           <Button variant="ghost" onClick={() => supabase.auth.signOut()}>
             Sign out
           </Button>

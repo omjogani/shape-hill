@@ -41,6 +41,16 @@ export type Snapshot = {
 
 export type HillResponse = { hill: Hill; scopes: Scope[] };
 
+export type ApiToken = {
+  ID: string;
+  Name: string;
+  Hint: string;
+  CreatedAt: string;
+  LastUsedAt: string | null;
+};
+
+export type CreatedApiToken = { token: string; api_token: ApiToken };
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -87,6 +97,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ username, name }),
     }),
+
+  listTokens: () => request<ApiToken[]>(`/api/tokens`),
+
+  createToken: (name: string) =>
+    request<CreatedApiToken>(`/api/tokens`, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteToken: (tokenId: string) => request<void>(`/api/tokens/${tokenId}`, { method: "DELETE" }),
 
   listHills: () => request<Hill[]>(`/api/hills`),
 

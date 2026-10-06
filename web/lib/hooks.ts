@@ -30,6 +30,26 @@ export function usePublicScopeSnapshots(scopeId: string, enabled: boolean) {
   });
 }
 
+export function useTokens() {
+  return useQuery({ queryKey: ["tokens"], queryFn: () => api.listTokens() });
+}
+
+export function useCreateToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.createToken(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tokens"] }),
+  });
+}
+
+export function useDeleteToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tokenId: string) => api.deleteToken(tokenId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tokens"] }),
+  });
+}
+
 export function useCreateHill() {
   const qc = useQueryClient();
   return useMutation({

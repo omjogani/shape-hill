@@ -13,6 +13,7 @@ import (
 type Store interface {
 	hills.Repository
 	account.Repository
+	account.TokenRepository
 }
 
 type Server struct {
@@ -31,6 +32,9 @@ func New(st Store, log *slog.Logger, verify account.VerifyToken) *Server {
 	server.mux.HandleFunc("GET /api/public/scopes/{id}/positions", server.publicScopeSnapshots)
 	server.mux.HandleFunc("GET /api/me", server.authenticate(server.currentUser))
 	server.mux.HandleFunc("POST /api/onboard", server.authenticate(server.onboard))
+	server.mux.HandleFunc("GET /api/tokens", server.sessionOnly(server.listTokens))
+	server.mux.HandleFunc("POST /api/tokens", server.sessionOnly(server.createToken))
+	server.mux.HandleFunc("DELETE /api/tokens/{id}", server.sessionOnly(server.deleteToken))
 	server.mux.HandleFunc("GET /api/hills", server.authed(server.listHills))
 	server.mux.HandleFunc("POST /api/hills", server.authed(server.createHill))
 	server.mux.HandleFunc("GET /api/hills/{slug}", server.authed(server.getHill))
