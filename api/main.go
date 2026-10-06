@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/omjogani/shape-hill/internal/config"
-	"github.com/omjogani/shape-hill/internal/server"
-	"github.com/omjogani/shape-hill/internal/store"
+	"github.com/omjogani/shape-hill/api/internal/config"
+	"github.com/omjogani/shape-hill/api/internal/server"
+	"github.com/omjogani/shape-hill/api/internal/store"
 )
 
 func main() {

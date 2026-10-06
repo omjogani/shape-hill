@@ -8,9 +8,9 @@ import (
 
 func TestCoreDependsOnNothingOutside(t *testing.T) {
 	core := []string{
-		"github.com/omjogani/shape-hill/internal/hills",
-		"github.com/omjogani/shape-hill/internal/account",
-		"github.com/omjogani/shape-hill/internal/hillchart",
+		"github.com/omjogani/shape-hill/api/internal/hills",
+		"github.com/omjogani/shape-hill/api/internal/account",
+		"github.com/omjogani/shape-hill/api/internal/hillchart",
 	}
 	banned := []string{
 		"net/http",
@@ -19,9 +19,9 @@ func TestCoreDependsOnNothingOutside(t *testing.T) {
 		"github.com/golang-jwt/",
 		"github.com/MicahParks/",
 		"github.com/spf13/",
-		"github.com/omjogani/shape-hill/internal/store",
-		"github.com/omjogani/shape-hill/internal/server",
-		"github.com/omjogani/shape-hill/internal/config",
+		"github.com/omjogani/shape-hill/api/internal/store",
+		"github.com/omjogani/shape-hill/api/internal/server",
+		"github.com/omjogani/shape-hill/api/internal/config",
 	}
 
 	out, err := exec.Command("go", append([]string{"list", "-deps"}, core...)...).Output()

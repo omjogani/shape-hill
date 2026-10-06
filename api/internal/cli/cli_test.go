@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/omjogani/shape-hill/internal/account"
-	"github.com/omjogani/shape-hill/internal/hills"
-	"github.com/omjogani/shape-hill/internal/server"
-	"github.com/omjogani/shape-hill/internal/store"
+	"github.com/omjogani/shape-hill/api/internal/account"
+	"github.com/omjogani/shape-hill/api/internal/hills"
+	"github.com/omjogani/shape-hill/api/internal/server"
+	"github.com/omjogani/shape-hill/api/internal/store"
 )
 
 type env map[string]string

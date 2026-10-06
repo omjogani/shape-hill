@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/omjogani/shape-hill/internal/account"
-	"github.com/omjogani/shape-hill/internal/hills"
+	"github.com/omjogani/shape-hill/api/internal/account"
+	"github.com/omjogani/shape-hill/api/internal/hills"
 )
 
 func (s *Store) CreateUser(ctx context.Context, email, username, name string) (account.User, error) {

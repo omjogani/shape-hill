@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/omjogani/shape-hill/internal/account"
-	"github.com/omjogani/shape-hill/internal/store"
+	"github.com/omjogani/shape-hill/api/internal/account"
+	"github.com/omjogani/shape-hill/api/internal/store"
 )
 
 func testServer(t *testing.T) (*httptest.Server, *store.Store, account.User, string) {

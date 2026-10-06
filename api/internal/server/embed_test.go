@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/omjogani/shape-hill/internal/hills"
+	"github.com/omjogani/shape-hill/api/internal/hills"
 )
 
 func TestChartOfFlagsStalledOnlyWhenTracked(t *testing.T) {

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two independent projects, no shared build:
 
-- `api/` — Go module `github.com/omjogani/shape-hill` (go 1.26.5). Currently a `main.go` hello-world, no dependencies.
+- `api/` — Go module `github.com/omjogani/shape-hill/api` (go 1.26.5): the HTTP server (`main.go`) and the `shapehill` CLI (`cmd/shapehill`).
 - `web/` — Next.js 16 + React 19 + Tailwind v4 app (App Router, TypeScript), managed with **pnpm**. Currently the default starter.
 
 Both are scaffolds; there is no wiring between them yet. Expect to establish conventions rather than follow existing ones.

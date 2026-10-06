@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { HeaderCta } from "@/components/landing/HeaderCta";
+import { CodeBlock } from "@/components/docs/CodeBlock";
 import { HeroChart } from "@/components/landing/HeroChart";
+import { SiteFooter } from "@/components/landing/SiteFooter";
+import { SiteHeader } from "@/components/landing/SiteHeader";
 import { BASELINE, LEFT, RIGHT, x, y } from "@/lib/geometry";
 
 export const metadata: Metadata = {
@@ -10,10 +12,13 @@ export const metadata: Metadata = {
     "Where the work is, not how much is left. Draw a Shape Up hill chart and embed it in any README.",
 };
 
-const GITHUB = "https://github.com/omjogani/shape-hill";
 const DEMO = "/shape-hill-readme/view";
 const EMBED_SNIPPET =
   "[![Team hill](https://shape-hill.onrender.com/hill/your-slug.svg?style=github)](https://shape-hill.vercel.app/your-slug/view)";
+
+const CLI_SNIPPET = `shapehill hill create launch-v2 --title "Launch v2" --public
+shapehill scope add launch-v2 "API integration"
+shapehill scope move launch-v2 "API integration" 55 --note "auth approach settled"`;
 
 const curve = (() => {
   let d = "";
@@ -70,20 +75,7 @@ const PHASES = [
 export default function LandingPage() {
   return (
     <div className="landing min-h-screen">
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-        <Link href="/" className="font-mono text-sm tracking-widest">
-          shapehill
-        </Link>
-        <nav className="flex items-center gap-2 text-sm">
-          <a
-            href={GITHUB}
-            className="rounded-md px-3 py-1.5 text-[var(--dim)] transition-colors hover:text-[var(--text)]"
-          >
-            GitHub
-          </a>
-          <HeaderCta />
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto w-full max-w-6xl px-6">
         <section className="hero-glow flex flex-col items-center pb-16 pt-20 text-center sm:pt-28">
@@ -194,28 +186,33 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <section className="fade-up border-t border-[var(--edge)] py-28">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div className="max-w-xl">
+              <Pill>CLI</Pill>
+              <h2 className="mt-6 text-4xl font-semibold leading-[1.1] tracking-[-0.03em] sm:text-5xl">
+                Move the dots without leaving the terminal.
+              </h2>
+              <p className="mt-6 text-lg leading-relaxed text-[var(--dim)]">
+                Create a hill for a story, then let the work move it: by hand, from a script, or
+                from an AI agent that updates the chart every time it finishes a piece.
+              </p>
+              <Link
+                href="/docs/cli"
+                className="mt-8 inline-block rounded-lg bg-[var(--text)] px-5 py-2.5 font-medium text-[var(--bg)] transition-opacity hover:opacity-90"
+              >
+                Read the CLI docs
+              </Link>
+            </div>
+            <div className="min-w-0">
+              <CodeBlock label="Terminal" code={CLI_SNIPPET} />
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-6 border-t border-[var(--edge)] px-6 py-10 text-sm text-[var(--dim)]">
-        <p>
-          Borrowed, with thanks, from{" "}
-          <a
-            href="https://basecamp.com/shapeup/3.4-chapter-13"
-            className="text-[var(--text)] underline underline-offset-4"
-          >
-            Basecamp&apos;s Shape Up
-          </a>
-          .
-        </p>
-        <div className="flex items-center gap-5">
-          <a href={GITHUB} className="transition-colors hover:text-[var(--text)]">
-            GitHub
-          </a>
-          <Link href="/app" className="transition-colors hover:text-[var(--text)]">
-            Open the app
-          </Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

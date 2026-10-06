@@ -7,8 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/omjogani/shape-hill/internal/account"
-	"github.com/omjogani/shape-hill/internal/hills"
+	"github.com/omjogani/shape-hill/api/internal/account"
+	"github.com/omjogani/shape-hill/api/internal/hills"
 )
 
 var (

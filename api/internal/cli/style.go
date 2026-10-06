@@ -9,7 +9,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/omjogani/shape-hill/internal/hills"
+	"github.com/omjogani/shape-hill/api/internal/hills"
 )
 
 var (
